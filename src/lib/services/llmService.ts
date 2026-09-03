@@ -51,38 +51,39 @@ export class LLMService {
   ): Promise<CandidateProfile | null> {
     const hasPdfAttachment = Boolean(pdfBase64 && llmConfig.provider === 'gemini');
     
-    const prompt = `You are an expert AI Resume Parser and Technical Recruiter.
-${hasPdfAttachment ? 'Please inspect the attached resume document thoroughly (including all sections, multi-column blocks, projects, and work experience).' : 'You are provided with extracted text from a candidate\'s resume.'}
+    const prompt = `You are a Principal Technical Recruiter and AI Talent Intelligence Engine.
+${hasPdfAttachment ? 'Thoroughly examine the attached candidate resume document (including header, all work history roles, multi-column sections, technical skills, quantifiable bullet points, and project deliverables).' : 'Thoroughly examine the extracted resume text below.'}
 
-${rawText && rawText.length > 20 ? `EXTRACTED RESUME TEXT:
-${rawText.slice(0, 10000)}` : ''}
+${rawText && rawText.length > 20 ? `RAW RESUME TEXT:
+${rawText.slice(0, 12000)}` : ''}
 
-INSTRUCTIONS:
-1. Extract all information from the resume into structured JSON without biasing toward any specific job role or predefined template. Simply extract what is actually documented on the resume!
-2. Identify the candidate's real Full Name from the resume header. Do not use generic placeholders if a real name is visible.
-3. Identify 3 to 8 key claims, accomplishments, responsibilities, metrics, or project highlights directly stated on the resume. Do NOT force claims to fit a specific technical or backend schema — capture whatever work, achievements, or experience the candidate actually documented.
-4. Ensure ALL extracted claim statements ("rawClaim"), project highlights, and summaries are phrased in **clear, grammatically correct, polished English**, completely free of PDF junk symbols (like bullet fragments, CID tags, octal codes, or weird font characters).
-5. Categorize each claim naturally according to its true context (e.g., "Project Accomplishment", "Experience & Responsibilities", "Technical Achievement", "Impact & Results", "Leadership & Collaboration", "Domain Expertise").
+ANALYSIS GOALS:
+1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name, current/latest Job Title, and calculate total years of professional experience from the dates on the resume.
+2. **Key Roles & Companies**: Identify the candidate's key employment roles, company names, and employment dates.
+3. **Verifiable Technical Claims**: Extract 4 to 10 prominent, concrete claims, accomplishments, technical designs, optimizations, or project highlights documented on the resume.
+4. **Metrics & Impact**: Capture the exact metrics, percentages, traffic volumes, latency reductions, cost savings, user counts, or business outcomes mentioned.
+5. **Categorization**: Categorize each claim naturally (e.g., "System Architecture", "Scale & High Concurrency", "Performance & Optimization", "Reliability & Infrastructure", "Product & Full-Stack", "Leadership & Mentorship").
+6. **Skills & Tools**: Extract all languages, frameworks, databases, and tools/platforms explicitly mentioned on the resume.
 
-Respond ONLY with a valid JSON object matching this exact schema:
+Respond ONLY with a valid JSON object matching this schema:
 {
-  "name": "Candidate Full Name or ${fallbackName}",
-  "title": "Current or Recent Job Title as stated on the resume",
+  "name": "Candidate Full Name",
+  "title": "Exact Current or Latest Role Title",
   "experienceYears": 5,
-  "summary": "Clear 2-3 sentence executive summary in proper English summarizing the candidate's actual experience.",
+  "summary": "2-3 sentence executive summary accurately capturing their background, key tech competencies, and primary domain.",
   "skills": {
-    "languages": ["Extracted Languages/Skills"],
-    "frameworks": ["Extracted Frameworks/Libraries"],
-    "databases": ["Extracted Databases/Storage"],
-    "toolsAndInfra": ["Extracted Tools/Platforms/Software"]
+    "languages": ["TypeScript", "Python"],
+    "frameworks": ["React", "FastAPI"],
+    "databases": ["PostgreSQL", "Redis"],
+    "toolsAndInfra": ["Docker", "AWS", "Kubernetes"]
   },
   "claims": [
     {
       "id": "claim-1",
-      "rawClaim": "Clear, complete sentence describing a real claim, accomplishment, or responsibility directly from the resume.",
-      "category": "Natural Category Name",
-      "contextProject": "Associated Project or Company",
-      "claimedMetrics": "Metric or Outcome mentioned (or N/A)",
+      "rawClaim": "Clear, complete sentence describing a real achievement, architecture, or responsibility directly from the resume.",
+      "category": "Architecture & Scale",
+      "contextProject": "Company or Project Name",
+      "claimedMetrics": "Exact metric mentioned (or 'Documented Highlight')",
       "confidenceLevel": "High",
       "verificationStatus": "Pending"
     }
@@ -90,19 +91,19 @@ Respond ONLY with a valid JSON object matching this exact schema:
   "projects": [
     {
       "id": "proj-1",
-      "title": "Project Name from Resume",
-      "role": "Role on Project",
-      "duration": "Duration if mentioned",
-      "technologies": ["Technologies used"],
-      "description": "Short project summary in proper English.",
-      "highlights": ["Key bullet point 1 in clean English", "Key bullet point 2 in clean English"]
+      "title": "Project or Company Name",
+      "role": "Role Title",
+      "duration": "Dates (e.g. 2022 - Present)",
+      "technologies": ["Tech used"],
+      "description": "Short project summary.",
+      "highlights": ["Key bullet point 1", "Key bullet point 2"]
     }
   ],
   "education": [
     {
-      "degree": "Degree/Certification",
-      "institution": "Institution Name",
-      "year": "Graduation Year"
+      "degree": "Degree / Certification",
+      "institution": "University / Issuer",
+      "year": "Year"
     }
   ]
 }`;
