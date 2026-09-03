@@ -65,28 +65,28 @@ ${rawText.slice(0, 12000)}` : ''}
 ANALYSIS GOALS:
 1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name, current/latest Job Title, and calculate total years of professional experience from the dates on the resume.
 2. **Key Roles & Companies**: Identify the candidate's key employment roles, company names, and employment dates.
-3. **Verifiable Technical Claims**: Extract 4 to 10 prominent, concrete claims, accomplishments, technical designs, optimizations, or project highlights documented on the resume.
-4. **Metrics & Impact**: Capture the exact metrics, percentages, traffic volumes, latency reductions, cost savings, user counts, or business outcomes mentioned.
-5. **Categorization**: Categorize each claim naturally (e.g., "System Architecture", "Scale & High Concurrency", "Performance & Optimization", "Reliability & Infrastructure", "Product & Full-Stack", "Leadership & Mentorship").
-6. **Skills & Tools**: Extract all languages, frameworks, databases, and tools/platforms explicitly mentioned on the resume.
+3. **Verifiable Claims (CRITICAL: KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Lined up 40+ lateral hiring interviews within 90 days."). NEVER dump multiple sentences, paragraphs, or full summary blocks into a single claim!
+4. **Metrics & Impact**: Capture the exact metrics, percentages, numbers, volumes, or business outcomes mentioned.
+5. **Categorization**: Categorize each claim naturally (e.g., "Scale & Traffic", "Database & Storage", "Performance & Latency", "Reliability & CI/CD", "Leadership").
+6. **Skills & Tools**: Extract all relevant skills, tools, and platforms explicitly mentioned on the resume.
 
 Respond ONLY with a valid JSON object matching this schema:
 {
   "name": "Candidate Full Name",
   "title": "Exact Current or Latest Role Title",
   "experienceYears": 5,
-  "summary": "2-3 sentence executive summary accurately capturing their background, key tech competencies, and primary domain.",
+  "summary": "2-3 sentence executive summary accurately capturing their background, key competencies, and primary domain.",
   "skills": {
-    "languages": ["TypeScript", "Python"],
-    "frameworks": ["React", "FastAPI"],
-    "databases": ["PostgreSQL", "Redis"],
-    "toolsAndInfra": ["Docker", "AWS", "Kubernetes"]
+    "languages": ["Languages / Core competencies"],
+    "frameworks": ["Frameworks / Methodologies"],
+    "databases": ["Databases / ATS / Systems"],
+    "toolsAndInfra": ["Tools / Platforms / Software"]
   },
   "claims": [
     {
       "id": "claim-1",
-      "rawClaim": "Clear, complete sentence describing a real achievement, architecture, or responsibility directly from the resume.",
-      "category": "Architecture & Scale",
+      "rawClaim": "Single concise sentence under 20 words describing one specific achievement or metric.",
+      "category": "Scale & Traffic",
       "contextProject": "Company or Project Name",
       "claimedMetrics": "Exact metric mentioned (or 'Documented Highlight')",
       "confidenceLevel": "High",

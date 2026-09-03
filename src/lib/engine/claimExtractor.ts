@@ -187,54 +187,82 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     calculatedYears = Math.max(1, new Date().getFullYear() - validYears[0]);
   }
 
-  // 5. Extract Real Claims directly from actual resume bullet points and action statements
+  // 5. Extract Real Claims: Split by sentence boundaries (. , \n, •) so claims are short and concise
   const extractedClaims: ResumeClaim[] = [];
-  const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|projects))/i;
+  const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|interviews|profiles|applications|drives|roles|projects|\$))/i;
+
+  // Split raw text into individual distinct sentences
+  const rawSentences: string[] = [];
+  for (const line of lines) {
+    const sentences = line
+      .split(/(?<=[.!?•])\s+|\s*[•\n\r\t]+\s*/g)
+      .map(s => s.trim())
+      .filter(s => s.length > 20);
+    rawSentences.push(...sentences);
+  }
 
   let claimIdx = 1;
+  const seenClaims = new Set<string>();
 
-  for (const line of lines) {
-    const sanitizedLine = sanitizeClaimToEnglish(line);
-    if (!sanitizedLine || sanitizedLine.length < 25) continue;
+  for (const sentence of rawSentences) {
+    let sanitized = sanitizeClaimToEnglish(sentence);
+    if (!sanitized || sanitized.length < 20) continue;
 
-    // Filter out common resume section header titles
-    if (/^(experience|education|skills|summary|projects|contact|certifications|awards|languages|hobbies|references|interests)$/i.test(sanitizedLine.replace(/\.$/, ''))) {
-      continue;
+    // Filter out generic header sentences or introductory summary labels
+    if (/^(professional summary|summary|about me|work experience|employment history|education|skills|certifications|key skills|contact)/i.test(sanitized)) {
+      // If it starts with "PROFESSIONAL SUMMARY ...", remove the prefix
+      sanitized = sanitized.replace(/^(?:professional summary|summary|overview|profile)\s*[:\-–]?\s*/i, '').trim();
+      sanitized = sanitizeClaimToEnglish(sanitized);
+      if (!sanitized || sanitized.length < 20) continue;
+    }
+
+    // Keep claim concise (under 180 characters max) so it can be quickly probed
+    if (sanitized.length > 180) {
+      const parts = sanitized.split(/[,;]\s+/);
+      sanitized = parts[0];
+      if (parts[1] && sanitized.length < 70) {
+        sanitized += ', ' + parts[1];
+      }
+      if (!/[.!?]$/.test(sanitized)) sanitized += '.';
     }
 
     const isClaimCandidate = 
-      metricsRegex.test(sanitizedLine) || 
-      /built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched/i.test(sanitizedLine) ||
-      (sanitizedLine.length > 40 && !sanitizedLine.includes('@') && !sanitizedLine.includes('http'));
+      metricsRegex.test(sanitized) || 
+      /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|sourced|screened|conducted|reviewed|partnered|recruited|initiated|tracked)\b/i.test(sanitized) ||
+      (sanitized.length > 30 && sanitized.length <= 160 && !sanitized.includes('@') && !sanitized.includes('http'));
 
     if (isClaimCandidate) {
-      const match = sanitizedLine.match(metricsRegex);
+      const match = sanitized.match(metricsRegex);
       const metrics = match ? match[0] : 'Documented Highlight';
 
       let category: ResumeClaim['category'] = 'Architecture';
-      if (/user|traffic|scale|load|million|billion|concurrent|throughput|volume/i.test(sanitizedLine)) {
+      if (/user|traffic|scale|load|million|billion|concurrent|throughput|volume|campus|lateral|hiring|interviews|applications/i.test(sanitized)) {
         category = 'Scale & Traffic';
-      } else if (/database|sql|postgres|redis|mongo|storage|cache|kafka|query|data/i.test(sanitizedLine)) {
+      } else if (/database|sql|postgres|redis|mongo|storage|cache|kafka|query|data|ats|profiles|pipeline/i.test(sanitized)) {
         category = 'Database & Storage';
-      } else if (/latency|p95|p99|speed|ms|fast|throughput|optimized|performance|response time|cost|reduction/i.test(sanitizedLine)) {
+      } else if (/latency|p95|p99|speed|ms|fast|throughput|optimized|performance|response time|cost|reduction|turnaround/i.test(sanitized)) {
         category = 'Performance & Latency';
-      } else if (/uptime|sla|resilient|ci\/cd|kubernetes|docker|deploy|aws|cloud|monitoring|security|pipeline/i.test(sanitizedLine)) {
+      } else if (/uptime|sla|resilient|ci\/cd|kubernetes|docker|deploy|aws|cloud|monitoring|security|onboarding|operations/i.test(sanitized)) {
         category = 'Reliability & CI/CD';
-      } else if (/lead|managed|team|mentored|spearheaded|directed|coordinated|hired/i.test(sanitizedLine)) {
+      } else if (/lead|managed|team|mentored|spearheaded|directed|coordinated|hired|partner/i.test(sanitized)) {
         category = 'Leadership';
       } else {
         category = 'Architecture';
       }
 
-      extractedClaims.push({
-        id: `claim-${claimIdx++}`,
-        rawClaim: sanitizedLine,
-        category,
-        contextProject: 'Resume Experience',
-        claimedMetrics: metrics,
-        confidenceLevel: sanitizedLine.length > 50 ? 'High' : 'Needs Deep-Dive',
-        verificationStatus: 'Pending'
-      });
+      const lowerKey = sanitized.toLowerCase().slice(0, 45);
+      if (!seenClaims.has(lowerKey)) {
+        seenClaims.add(lowerKey);
+        extractedClaims.push({
+          id: `claim-${claimIdx++}`,
+          rawClaim: sanitized,
+          category,
+          contextProject: 'Resume Experience',
+          claimedMetrics: metrics,
+          confidenceLevel: sanitized.length > 40 ? 'High' : 'Needs Deep-Dive',
+          verificationStatus: 'Pending'
+        });
+      }
 
       if (extractedClaims.length >= 8) break;
     }
