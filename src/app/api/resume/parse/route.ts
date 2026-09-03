@@ -14,6 +14,8 @@ export async function POST(req: NextRequest) {
     let presetId = '';
     let clientLLMConfig: Partial<LLMConfig> | undefined;
 
+    let pdfBase64: string | undefined;
+
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
@@ -29,6 +31,7 @@ export async function POST(req: NextRequest) {
         const buffer = Buffer.from(arrayBuffer);
 
         if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+          pdfBase64 = buffer.toString('base64');
           rawText = await extractTextFromPdfBuffer(buffer);
         } else {
           rawText = cleanPdfText(buffer.toString('utf-8'));
@@ -47,12 +50,12 @@ export async function POST(req: NextRequest) {
     if (presetId) {
       const preset = SAMPLE_CANDIDATES.find(c => c.id === presetId);
       profile = preset || SAMPLE_CANDIDATES[0];
-    } else if (rawText && rawText.length > 10) {
+    } else {
       // Check if LLM / AI key is configured
       const effectiveLLM = LLMService.getEffectiveConfig(clientLLMConfig);
-      if (effectiveLLM) {
+      if (effectiveLLM && (rawText.length > 10 || pdfBase64)) {
         try {
-          const aiProfile = await LLMService.parseResumeWithLLM(rawText, candidateName, effectiveLLM);
+          const aiProfile = await LLMService.parseResumeWithLLM(rawText, candidateName, effectiveLLM, pdfBase64);
           if (aiProfile) {
             profile = aiProfile;
           }
@@ -63,10 +66,8 @@ export async function POST(req: NextRequest) {
 
       // Fallback to intelligent local claim extractor if AI unavailable or returned null
       if (!profile) {
-        profile = extractClaimsFromText(rawText, candidateName);
+        profile = extractClaimsFromText(rawText || `Resume document for ${candidateName}`, candidateName);
       }
-    } else {
-      profile = extractClaimsFromText(rawText || `Resume background for ${candidateName}`, candidateName);
     }
 
     await memoryStore.saveCandidate(profile);

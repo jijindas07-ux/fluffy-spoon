@@ -46,19 +46,23 @@ export class LLMService {
   public static async parseResumeWithLLM(
     rawText: string,
     fallbackName: string = 'Candidate',
-    llmConfig: LLMConfig
+    llmConfig: LLMConfig,
+    pdfBase64?: string
   ): Promise<CandidateProfile | null> {
+    const hasPdfAttachment = Boolean(pdfBase64 && llmConfig.provider === 'gemini');
+    
     const prompt = `You are an expert AI Resume Parser and Technical Recruiter.
-You are provided with extracted text from a candidate's resume PDF. The raw text may contain PDF formatting artifacts, split lines, or odd bullet characters.
+${hasPdfAttachment ? 'Please inspect the attached resume document thoroughly (including all sections, multi-column blocks, projects, and work experience).' : 'You are provided with extracted text from a candidate\'s resume.'}
 
-RAW RESUME TEXT:
-${rawText.slice(0, 8000)}
+${rawText && rawText.length > 20 ? `EXTRACTED RESUME TEXT:
+${rawText.slice(0, 10000)}` : ''}
 
 INSTRUCTIONS:
-1. Extract and clean all information from the resume into structured JSON without biasing toward any specific job role or predefined template. Simply extract what is ON the resume!
-2. Ensure ALL extracted claim statements ("rawClaim"), project highlights, and summaries are phrased in **clear, grammatically correct, polished English**, completely free of PDF junk symbols (like bullet fragments, CID tags, octal codes, or weird font characters).
+1. Extract all information from the resume into structured JSON without biasing toward any specific job role or predefined template. Simply extract what is actually documented on the resume!
+2. Identify the candidate's real Full Name from the resume header. Do not use generic placeholders if a real name is visible.
 3. Identify 3 to 8 key claims, accomplishments, responsibilities, metrics, or project highlights directly stated on the resume. Do NOT force claims to fit a specific technical or backend schema — capture whatever work, achievements, or experience the candidate actually documented.
-4. Categorize each claim naturally according to its true context (e.g., "Project Accomplishment", "Experience & Responsibilities", "Technical Achievement", "Impact & Results", "Leadership & Collaboration", "Domain Expertise").
+4. Ensure ALL extracted claim statements ("rawClaim"), project highlights, and summaries are phrased in **clear, grammatically correct, polished English**, completely free of PDF junk symbols (like bullet fragments, CID tags, octal codes, or weird font characters).
+5. Categorize each claim naturally according to its true context (e.g., "Project Accomplishment", "Experience & Responsibilities", "Technical Achievement", "Impact & Results", "Leadership & Collaboration", "Domain Expertise").
 
 Respond ONLY with a valid JSON object matching this exact schema:
 {
@@ -104,29 +108,30 @@ Respond ONLY with a valid JSON object matching this exact schema:
 }`;
 
     try {
-      const responseText = await this.callLLM(prompt, llmConfig, true);
+      const inlineData = hasPdfAttachment ? { mimeType: 'application/pdf', data: pdfBase64! } : undefined;
+      const responseText = await this.callLLM(prompt, llmConfig, true, inlineData);
       const parsed = this.cleanAndParseJSON(responseText);
       if (parsed && parsed.name && Array.isArray(parsed.claims) && parsed.claims.length > 0) {
         return {
           id: `cand-${Date.now()}`,
-          name: parsed.name || fallbackName,
-          title: parsed.title || 'Senior Software Engineer',
-          experienceYears: Number(parsed.experienceYears) || 5,
-          summary: parsed.summary || 'Experienced software engineer with a track record of building performant systems.',
+          name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
+          title: parsed.title || 'Professional',
+          experienceYears: Number(parsed.experienceYears) || 3,
+          summary: parsed.summary || 'Demonstrated technical and professional experience documented on resume.',
           skills: {
-            languages: parsed.skills?.languages || ['TypeScript', 'JavaScript'],
-            frameworks: parsed.skills?.frameworks || ['React', 'Node.js'],
-            databases: parsed.skills?.databases || ['PostgreSQL'],
-            toolsAndInfra: parsed.skills?.toolsAndInfra || ['Docker', 'AWS']
+            languages: parsed.skills?.languages || [],
+            frameworks: parsed.skills?.frameworks || [],
+            databases: parsed.skills?.databases || [],
+            toolsAndInfra: parsed.skills?.toolsAndInfra || []
           },
           projects: parsed.projects || [],
           education: parsed.education || [],
           claims: parsed.claims.map((c: any, i: number) => ({
             id: c.id || `claim-${i + 1}`,
-            rawClaim: c.rawClaim || 'Engineered scalable backend service',
-            category: c.category || 'Architecture',
-            contextProject: c.contextProject || 'Engineering Project',
-            claimedMetrics: c.claimedMetrics || 'Production Metric',
+            rawClaim: c.rawClaim || 'Demonstrated professional accomplishment',
+            category: c.category || 'Experience',
+            contextProject: c.contextProject || 'Project Experience',
+            claimedMetrics: c.claimedMetrics || 'N/A',
             confidenceLevel: c.confidenceLevel || 'High',
             verificationStatus: 'Pending'
           }))
@@ -367,7 +372,12 @@ Respond ONLY with a valid JSON object matching this exact schema:
   /**
    * Helper to dispatch LLM call to appropriate provider
    */
-  private static async callLLM(prompt: string, config: LLMConfig, jsonMode: boolean = false): Promise<string> {
+  private static async callLLM(
+    prompt: string, 
+    config: LLMConfig, 
+    jsonMode: boolean = false,
+    inlineData?: { mimeType: string; data: string }
+  ): Promise<string> {
     const provider = config.provider;
 
     if (provider === 'gemini') {
@@ -375,6 +385,16 @@ Respond ONLY with a valid JSON object matching this exact schema:
       if (!apiKey) throw new Error('Missing Gemini API Key');
       const modelsToTry = [config.model || 'gemini-3.6-flash', 'gemini-3.6-flash'].filter((v, i, a) => a.indexOf(v) === i);
       
+      const parts: any[] = [{ text: prompt }];
+      if (inlineData) {
+        parts.push({
+          inlineData: {
+            mimeType: inlineData.mimeType,
+            data: inlineData.data
+          }
+        });
+      }
+
       let lastError = '';
       for (const model of modelsToTry) {
         try {
@@ -383,7 +403,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
+              contents: [{ parts }],
               generationConfig: {
                 temperature: 0.3,
                 maxOutputTokens: 2048,

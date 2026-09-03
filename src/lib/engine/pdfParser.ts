@@ -28,17 +28,16 @@ export function cleanPdfText(rawText: string): string {
     .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '\n• ')
     .replace(/\u00A0/g, ' ');
 
-  // Fix hyphenated words split across lines or spaces (e.g. "micro- \n services" or "Experi- enced" -> "microservices", "Experienced")
+  // Fix hyphenated words split across line breaks (e.g. "micro-\nservices" -> "microservices")
   cleaned = cleaned.replace(/([a-zA-Z]{2,})-\s*[\r\n]+\s*([a-zA-Z]{2,})/g, '$1$2');
-  cleaned = cleaned.replace(/([a-zA-Z]{2,})-\s+([a-zA-Z]{2,})/g, '$1$2');
 
-  // Replace multiple carriage returns / newlines with clean double newline or line break
+  // Replace excessive carriage returns / newlines with clean double newline
   cleaned = cleaned.replace(/(\r\n|\r|\n){3,}/g, '\n\n');
 
-  // Clean lines: strip leading bullet junk and invalid noise
+  // Clean lines: strip leading bullet junk and whitespace
   const lines = cleaned.split('\n').map(line => {
     let l = line.trim();
-    // Normalize bullet points
+    // Normalize BOM and leading garbage
     l = l.replace(/^[\uFEFF\uFFFE\u00EF\u00BB\u00BF]+/, '');
     l = l.replace(/^[^\w\s•\-\(\)\[\]"'.,:;/$%#&%+@]+/, '');
     return l;
@@ -116,7 +115,7 @@ function extractTextFromRawPdfBuffer(buffer: Buffer): string {
     }
   }
 
-  // Also fallback to extracting ASCII string sequences if stream parsing found nothing
+  // Fallback to extracting ASCII string sequences if stream parsing found nothing
   if (textChunks.length === 0) {
     const asciiRegex = /[A-Za-z0-9\s.,;:()\/\-%#@&$+='"]{4,}/g;
     let asciiMatch: RegExpExecArray | null;
@@ -133,19 +132,41 @@ function extractTextFromRawPdfBuffer(buffer: Buffer): string {
 
 /**
  * Main PDF text extractor function.
- * Uses pdf-parse library installed in node_modules, falling back to zlib stream parser.
+ * Supports both pdf-parse v2 (PDFParse class) and v1 (function), with fallback to raw stream decompressor.
  */
 export async function extractTextFromPdfBuffer(buffer: Buffer): Promise<string> {
+  // 1. Try pdf-parse v2 (PDFParse class)
   try {
-    const pdfParse = require('pdf-parse');
-    const parsed = await pdfParse(buffer);
-    if (parsed && parsed.text && parsed.text.trim().length > 15) {
-      return cleanPdfText(parsed.text);
+    const pdfModule = require('pdf-parse');
+    const PDFParseClass = pdfModule.PDFParse || (typeof pdfModule === 'function' ? pdfModule : null);
+    
+    if (PDFParseClass && PDFParseClass.prototype && typeof PDFParseClass.prototype.getText === 'function') {
+      const parser = new PDFParseClass({ data: new Uint8Array(buffer) });
+      const textResult = await parser.getText();
+      if (typeof parser.destroy === 'function') {
+        try { await parser.destroy(); } catch {}
+      }
+      if (textResult && textResult.text && textResult.text.trim().length > 15) {
+        return cleanPdfText(textResult.text);
+      }
     }
   } catch (e) {
-    console.warn('pdf-parse primary extraction fallback:', e);
+    console.warn('pdf-parse v2 extraction warning:', e);
   }
 
-  // Use fallback stream extractor
+  // 2. Try legacy pdf-parse v1 function
+  try {
+    const pdfModule = require('pdf-parse');
+    if (typeof pdfModule === 'function') {
+      const parsed = await pdfModule(buffer);
+      if (parsed && parsed.text && parsed.text.trim().length > 15) {
+        return cleanPdfText(parsed.text);
+      }
+    }
+  } catch (e) {
+    console.warn('pdf-parse v1 extraction warning:', e);
+  }
+
+  // 3. Fallback to native Node zlib PDF stream decompressor
   return extractTextFromRawPdfBuffer(buffer);
 }
