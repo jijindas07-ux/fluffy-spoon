@@ -65,7 +65,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
                 {profile.title}
               </p>
               <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                <span>🎯 {profile.experienceYears}+ Years Exp</span>
+                {profile.experienceYears > 0 && <span>🎯 {profile.experienceYears}+ Years Exp</span>}
                 {profile.location && <span>📍 {profile.location}</span>}
               </div>
             </div>
@@ -86,111 +86,125 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
           </div>
         </div>
 
-        <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.5, borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem' }}>
-          {profile.summary}
-        </p>
+        {profile.summary && (
+          <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.5, borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem' }}>
+            {profile.summary}
+          </p>
+        )}
       </div>
 
       {/* Extracted Verifiable Claims (Target Anchors for Adaptive Interview) */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-          <ShieldCheck size={18} color="#818cf8" style={{ flexShrink: 0 }} />
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
-            Extracted Claims (Targeted for AI Adaptive Probe)
-          </h4>
-        </div>
+      {profile.claims && profile.claims.length > 0 && (
+        <div style={{ marginBottom: '1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+            <ShieldCheck size={18} color="#818cf8" style={{ flexShrink: 0 }} />
+            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+              Extracted Claims (Targeted for AI Adaptive Probe)
+            </h4>
+          </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-          {profile.claims.map((claim, idx) => (
-            <div
-              key={claim.id || idx}
-              className="glass-card"
-              style={{
-                padding: '1rem 1.15rem',
-                borderLeft: '4px solid var(--primary)',
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                gap: '0.85rem',
-                flexWrap: 'wrap',
-                background: 'rgba(14, 19, 31, 0.65)'
-              }}
-            >
-              <div style={{ flex: 1, minWidth: '220px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
-                  <span className="badge badge-indigo" style={{ fontSize: '0.65rem' }}>
-                    {claim.category}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-                    Context: {claim.contextProject}
-                  </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {profile.claims.map((claim, idx) => (
+              <div
+                key={claim.id || idx}
+                className="glass-card"
+                style={{
+                  padding: '1rem 1.15rem',
+                  borderLeft: '4px solid var(--primary)',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: '0.85rem',
+                  flexWrap: 'wrap',
+                  background: 'rgba(14, 19, 31, 0.65)'
+                }}
+              >
+                <div style={{ flex: 1, minWidth: '220px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+                    <span className="badge badge-indigo" style={{ fontSize: '0.65rem' }}>
+                      {claim.category}
+                    </span>
+                    {claim.contextProject && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+                        Context: {claim.contextProject}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.4, fontFamily: 'var(--font-mono)' }}>
+                    "{claim.rawClaim}"
+                  </div>
+                  {claim.claimedMetrics && claim.claimedMetrics !== 'N/A' && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', marginTop: '0.3rem' }}>
+                      Metric / Focus: <strong>{claim.claimedMetrics}</strong>
+                    </div>
+                  )}
                 </div>
-                <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.4, fontFamily: 'var(--font-mono)' }}>
-                  "{claim.rawClaim}"
-                </div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', marginTop: '0.3rem' }}>
-                  Metric / Focus: <strong>{claim.claimedMetrics}</strong>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="badge badge-amber" style={{ fontSize: '0.65rem' }}>
+                    Ready to Probe
+                  </span>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="badge badge-amber" style={{ fontSize: '0.65rem' }}>
-                  Ready to Probe
-                </span>
+      {/* Skills & Technologies Grid (Only rendered if actual skills were extracted) */}
+      {((profile.skills?.languages?.length || 0) > 0 || (profile.skills?.frameworks?.length || 0) > 0 || (profile.skills?.databases?.length || 0) > 0 || (profile.skills?.toolsAndInfra?.length || 0) > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
+          {((profile.skills?.languages?.length || 0) > 0 || (profile.skills?.frameworks?.length || 0) > 0) && (
+            <div className="glass-card" style={{ padding: '1.35rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                <Code size={16} color="var(--primary-light)" />
+                <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
+                  Languages & Frameworks
+                </h5>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                {[...(profile.skills.languages || []), ...(profile.skills.frameworks || [])].map((skill, i) => (
+                  <span key={i} style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '6px',
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-main)'
+                  }}>
+                    {skill}
+                  </span>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
-      </div>
+          )}
 
-      {/* Skills & Technologies Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '1.75rem' }}>
-        <div className="glass-card" style={{ padding: '1.35rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-            <Code size={16} color="var(--primary-light)" />
-            <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
-              Languages & Frameworks
-            </h5>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-            {[...profile.skills.languages, ...profile.skills.frameworks].map((skill, i) => (
-              <span key={i} style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '6px',
-                padding: '0.3rem 0.65rem',
-                fontSize: '0.8rem',
-                color: 'var(--text-main)'
-              }}>
-                {skill}
-              </span>
-            ))}
-          </div>
+          {((profile.skills?.databases?.length || 0) > 0 || (profile.skills?.toolsAndInfra?.length || 0) > 0) && (
+            <div className="glass-card" style={{ padding: '1.35rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
+                <Database size={16} color="var(--accent-cyan)" />
+                <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
+                  Databases & Infrastructure
+                </h5>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+                {[...(profile.skills.databases || []), ...(profile.skills.toolsAndInfra || [])].map((skill, i) => (
+                  <span key={i} style={{
+                    background: 'rgba(6, 182, 212, 0.08)',
+                    border: '1px solid rgba(6, 182, 212, 0.2)',
+                    borderRadius: '6px',
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.8rem',
+                    color: '#67e8f9'
+                  }}>
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-
-        <div className="glass-card" style={{ padding: '1.35rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-            <Database size={16} color="var(--accent-cyan)" />
-            <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
-              Databases & Infrastructure
-            </h5>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
-            {[...profile.skills.databases, ...profile.skills.toolsAndInfra].map((skill, i) => (
-              <span key={i} style={{
-                background: 'rgba(6, 182, 212, 0.08)',
-                border: '1px solid rgba(6, 182, 212, 0.2)',
-                borderRadius: '6px',
-                padding: '0.3rem 0.65rem',
-                fontSize: '0.8rem',
-                color: '#67e8f9'
-              }}>
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Projects Highlights */}
       {profile.projects && profile.projects.length > 0 && (

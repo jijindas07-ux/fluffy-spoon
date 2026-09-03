@@ -11,10 +11,12 @@ interface InterviewSetupProps {
 }
 
 export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStartInterview, onBack }) => {
-  const [roleTitle, setRoleTitle] = useState(profile.title || 'Senior Backend Engineer');
-  const [seniority, setSeniority] = useState<SeniorityLevel>('Senior');
+  const [roleTitle, setRoleTitle] = useState(profile.title || 'Professional');
+  const [seniority, setSeniority] = useState<SeniorityLevel>(
+    profile.experienceYears >= 8 ? 'Staff / Lead' : profile.experienceYears >= 4 ? 'Senior' : profile.experienceYears >= 2 ? 'Mid-Level' : 'Junior'
+  );
   const [durationMinutes, setDurationMinutes] = useState<number>(15);
-  const [focusArea, setFocusArea] = useState<InterviewFocus>('System Architecture & Scale');
+  const [focusArea, setFocusArea] = useState<InterviewFocus>('Deep Technical Verification');
   const [rigorLevel, setRigorLevel] = useState<RigorLevel>('Rigorous & Challenging');
 
   const seniorityOptions: SeniorityLevel[] = [
