@@ -241,13 +241,13 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
         </div>
 
         {/* Submit Actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <button type="button" onClick={onBack} className="btn btn-secondary">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <button type="button" onClick={onBack} className="btn btn-secondary" style={{ flex: 1, minWidth: '130px' }}>
             Back to Profile
           </button>
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.9rem 2.5rem', fontSize: '1.05rem', borderRadius: '12px' }}>
+          <button type="submit" className="btn btn-primary" style={{ padding: '0.85rem 1.8rem', fontSize: '1rem', borderRadius: '12px', flex: 2, minWidth: '220px' }}>
             <Sparkles size={18} />
-            <span>Launch Live Adaptive Interview</span>
+            <span>Launch Live Interview</span>
             <ArrowRight size={18} />
           </button>
         </div>

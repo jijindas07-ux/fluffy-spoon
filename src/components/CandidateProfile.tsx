@@ -14,20 +14,20 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: '1.5rem 0 3.5rem' }}>
       {/* Header breadcrumb & navigation */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <span className="badge badge-indigo" style={{ marginBottom: '0.4rem' }}>
             Step 2 of 4 • Profile & Claims Extracted
           </span>
-          <h2 style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
+          <h2 style={{ fontSize: '1.8rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
             Candidate Profile & Claim Graph
           </h2>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={onBack} className="btn btn-secondary" style={{ padding: '0.65rem 1.25rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', width: '100%', maxWidth: '340px' }}>
+          <button onClick={onBack} className="btn btn-secondary" style={{ padding: '0.65rem 1.25rem', flex: 1 }}>
             Back
           </button>
-          <button onClick={onProceed} className="btn btn-primary" style={{ padding: '0.65rem 1.5rem' }}>
+          <button onClick={onProceed} className="btn btn-primary" style={{ padding: '0.65rem 1.5rem', flex: 2 }}>
             <span>Configure Interview</span>
             <ArrowRight size={16} />
           </button>
@@ -35,38 +35,38 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
       </div>
 
       {/* Main Candidate Card */}
-      <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '1.5rem', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
+      <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem', border: '1px solid rgba(99, 102, 241, 0.25)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '16px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '14px',
               background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '1.5rem',
+              fontSize: '1.3rem',
               fontWeight: 800,
               color: '#ffffff',
-              boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)'
+              boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)',
+              flexShrink: 0
             }}>
               {profile.name.split(' ').map(n => n[0]).join('')}
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff' }}>
                   {profile.name}
                 </h3>
                 <span className="badge badge-emerald">Parsed Active</span>
               </div>
-              <p style={{ color: 'var(--accent-cyan)', fontSize: '0.95rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+              <p style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.2rem' }}>
                 {profile.title}
               </p>
-              <div style={{ display: 'flex', gap: '1rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                <span>🎯 {profile.experienceYears}+ Years Engineering</span>
+              <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
+                <span>🎯 {profile.experienceYears}+ Years Exp</span>
                 {profile.location && <span>📍 {profile.location}</span>}
-                {profile.email && <span>✉️ {profile.email}</span>}
               </div>
             </div>
           </div>
@@ -75,19 +75,18 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
             background: 'rgba(99, 102, 241, 0.08)',
             border: '1px solid rgba(99, 102, 241, 0.2)',
             borderRadius: '10px',
-            padding: '0.75rem 1.25rem',
-            textAlign: 'right'
+            padding: '0.6rem 1rem'
           }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Extracted Claims
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--primary-light)' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-light)' }}>
               {profile.claims.length} Verifiable Items
             </div>
           </div>
         </div>
 
-        <p style={{ marginTop: '1.25rem', color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: 1.6, borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+        <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.88rem', lineHeight: 1.5, borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem' }}>
           {profile.summary}
         </p>
       </div>
@@ -95,9 +94,9 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
       {/* Extracted Verifiable Claims (Target Anchors for Adaptive Interview) */}
       <div style={{ marginBottom: '1.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-          <ShieldCheck size={18} color="#818cf8" />
-          <h4 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
-            Extracted Technical Claims (Targeted for AI Adaptive Probe)
+          <ShieldCheck size={18} color="#818cf8" style={{ flexShrink: 0 }} />
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+            Extracted Claims (Targeted for AI Adaptive Probe)
           </h4>
         </div>
 
@@ -107,38 +106,36 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               key={claim.id || idx}
               className="glass-card"
               style={{
-                padding: '1.15rem 1.35rem',
+                padding: '1rem 1.15rem',
                 borderLeft: '4px solid var(--primary)',
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                gap: '1rem',
+                gap: '0.85rem',
+                flexWrap: 'wrap',
                 background: 'rgba(14, 19, 31, 0.65)'
               }}
             >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
-                  <span className="badge badge-indigo" style={{ fontSize: '0.68rem' }}>
+              <div style={{ flex: 1, minWidth: '220px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
+                  <span className="badge badge-indigo" style={{ fontSize: '0.65rem' }}>
                     {claim.category}
                   </span>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
-                    Project: {claim.contextProject}
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+                    Context: {claim.contextProject}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.98rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.45, fontFamily: 'var(--font-mono)' }}>
+                <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.4, fontFamily: 'var(--font-mono)' }}>
                   "{claim.rawClaim}"
                 </div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--accent-cyan)', marginTop: '0.35rem' }}>
-                  Target Metric: <strong>{claim.claimedMetrics}</strong>
+                <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', marginTop: '0.3rem' }}>
+                  Metric / Focus: <strong>{claim.claimedMetrics}</strong>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
-                <span className="badge badge-amber" style={{ fontSize: '0.68rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className="badge badge-amber" style={{ fontSize: '0.65rem' }}>
                   Ready to Probe
-                </span>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>
-                  Confidence: {claim.confidenceLevel}
                 </span>
               </div>
             </div>
@@ -225,11 +222,11 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
       )}
 
       {/* Action Footer */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-        <button onClick={onBack} className="btn btn-secondary">
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
+        <button onClick={onBack} className="btn btn-secondary" style={{ flex: 1, minWidth: '140px' }}>
           Change Candidate
         </button>
-        <button onClick={onProceed} className="btn btn-primary" style={{ padding: '0.85rem 2rem' }}>
+        <button onClick={onProceed} className="btn btn-primary" style={{ padding: '0.85rem 2rem', flex: 2, minWidth: '200px' }}>
           <span>Configure Interview Parameters</span>
           <ArrowRight size={18} />
         </button>

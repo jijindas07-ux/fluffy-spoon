@@ -84,7 +84,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
       </div>
 
       {/* CTA Buttons */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '3.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', marginBottom: '3.5rem', flexWrap: 'wrap' }}>
         <button 
           onClick={onStart}
           className="btn btn-primary"
@@ -107,15 +107,17 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
 
       {/* Live Interactive Reasoning Engine Preview Card */}
       <div style={{ maxWidth: '920px', margin: '0 auto' }}>
-        <div className="glass-card" style={{ padding: '1.75rem', border: '1px solid rgba(99, 102, 241, 0.3)', position: 'relative', overflow: 'hidden' }}>
+        <div className="glass-card" style={{ padding: '1.25rem', border: '1px solid rgba(99, 102, 241, 0.3)', position: 'relative', overflow: 'hidden' }}>
           {/* Top Status Header */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid var(--border-subtle)',
-            paddingBottom: '1rem',
-            marginBottom: '1.25rem'
+            paddingBottom: '0.85rem',
+            marginBottom: '1rem',
+            flexWrap: 'wrap',
+            gap: '0.5rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ display: 'flex', gap: '6px' }}>
@@ -123,15 +125,15 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b' }} />
                 <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981' }} />
               </div>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                adaptive_engine_session.ts [LIVE INFERENCE]
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                adaptive_engine [LIVE INFERENCE]
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span className="badge badge-cyan" style={{ fontSize: '0.7rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              <span className="badge badge-cyan" style={{ fontSize: '0.68rem' }}>
                 Turn {activeStepIndex + 1} of 3
               </span>
-              <span className="badge badge-emerald" style={{ fontSize: '0.7rem' }}>
+              <span className="badge badge-emerald" style={{ fontSize: '0.68rem' }}>
                 Memory Active
               </span>
             </div>
@@ -142,30 +144,32 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
             background: 'rgba(99, 102, 241, 0.1)',
             border: '1px dashed rgba(99, 102, 241, 0.35)',
             borderRadius: '10px',
-            padding: '0.75rem 1rem',
-            marginBottom: '1.25rem',
+            padding: '0.65rem 0.85rem',
+            marginBottom: '1rem',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <Zap size={16} color="#818cf8" />
-              <span style={{ fontSize: '0.85rem', color: '#c7d2fe', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Zap size={15} color="#818cf8" style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '0.8rem', color: '#c7d2fe', fontFamily: 'var(--font-mono)', wordBreak: 'break-word' }}>
                 {currentDemo.claim}
               </span>
             </div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
-              Dynamic Probe Level {activeStepIndex + 1}
+            <span style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+              Probe L{activeStepIndex + 1}
             </span>
           </div>
 
           {/* Simulated Dialogue Sequence */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             {/* AI Question */}
-            <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}>
               <div style={{
-                width: '32px',
-                height: '32px',
+                width: '30px',
+                height: '30px',
                 borderRadius: '8px',
                 background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
                 display: 'flex',
@@ -173,29 +177,29 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
-                <Cpu size={16} color="#ffffff" />
+                <Cpu size={15} color="#ffffff" />
               </div>
               <div style={{
                 background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '12px',
-                padding: '0.85rem 1.1rem',
-                maxWidth: '85%'
+                padding: '0.75rem 0.95rem',
+                maxWidth: '92%'
               }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--primary-light)', fontWeight: 700, marginBottom: '0.2rem' }}>
-                  AI INTERVIEWER (Contextual Inception)
+                <div style={{ fontSize: '0.68rem', color: 'var(--primary-light)', fontWeight: 700, marginBottom: '0.15rem' }}>
+                  AI INTERVIEWER
                 </div>
-                <div style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.45 }}>
                   "{currentDemo.aiPrompt}"
                 </div>
               </div>
             </div>
 
             {/* Candidate Answer */}
-            <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start', alignSelf: 'flex-end', flexDirection: 'row-reverse' }}>
+            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start', alignSelf: 'flex-end', flexDirection: 'row-reverse' }}>
               <div style={{
-                width: '32px',
-                height: '32px',
+                width: '30px',
+                height: '30px',
                 borderRadius: '8px',
                 background: 'rgba(255, 255, 255, 0.1)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -204,30 +208,30 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>YOU</span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>YOU</span>
               </div>
               <div style={{
                 background: 'rgba(99, 102, 241, 0.12)',
                 border: '1px solid rgba(99, 102, 241, 0.3)',
                 borderRadius: '12px',
-                padding: '0.85rem 1.1rem',
-                maxWidth: '85%',
+                padding: '0.75rem 0.95rem',
+                maxWidth: '92%',
                 textAlign: 'right'
               }}>
-                <div style={{ fontSize: '0.72rem', color: '#a5b4fc', fontWeight: 700, marginBottom: '0.2rem' }}>
+                <div style={{ fontSize: '0.68rem', color: '#a5b4fc', fontWeight: 700, marginBottom: '0.15rem' }}>
                   CANDIDATE RESPONSE
                 </div>
-                <div style={{ fontSize: '0.95rem', color: '#f8fafc', lineHeight: 1.5 }}>
+                <div style={{ fontSize: '0.88rem', color: '#f8fafc', lineHeight: 1.45 }}>
                   "{currentDemo.candidateAnswer}"
                 </div>
               </div>
             </div>
 
             {/* AI Dynamic Follow-up */}
-            <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-start' }}>
               <div style={{
-                width: '32px',
-                height: '32px',
+                width: '30px',
+                height: '30px',
                 borderRadius: '8px',
                 background: 'linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%)',
                 display: 'flex',
@@ -235,19 +239,19 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
-                <Sparkles size={16} color="#ffffff" />
+                <Sparkles size={15} color="#ffffff" />
               </div>
               <div style={{
                 background: 'rgba(6, 182, 212, 0.08)',
                 border: '1px solid rgba(6, 182, 212, 0.3)',
                 borderRadius: '12px',
-                padding: '0.85rem 1.1rem',
-                maxWidth: '85%'
+                padding: '0.75rem 0.95rem',
+                maxWidth: '92%'
               }}>
-                <div style={{ fontSize: '0.72rem', color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.2rem' }}>
-                  AI DYNAMIC FOLLOW-UP (Investigating Previous Answer)
+                <div style={{ fontSize: '0.68rem', color: 'var(--accent-cyan)', fontWeight: 700, marginBottom: '0.15rem' }}>
+                  AI DYNAMIC FOLLOW-UP
                 </div>
-                <div style={{ fontSize: '0.95rem', color: '#ffffff', fontWeight: 500, lineHeight: 1.5 }}>
+                <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 500, lineHeight: 1.45 }}>
                   "{currentDemo.nextFollowUp}"
                 </div>
               </div>

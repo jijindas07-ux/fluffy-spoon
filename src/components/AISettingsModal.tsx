@@ -82,7 +82,9 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
         borderRadius: '16px',
         border: '1px solid rgba(99, 102, 241, 0.4)',
         boxShadow: '0 20px 50px rgba(0,0,0,0.8)',
-        position: 'relative'
+        position: 'relative',
+        maxHeight: '90vh',
+        overflowY: 'auto'
       }}>
         <button
           onClick={onClose}
@@ -127,7 +129,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
           <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
             Select AI Intelligence Provider
           </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
             <button
               type="button"
               onClick={() => { setProvider('gemini'); setModel('gemini-3.6-flash'); }}
@@ -250,7 +252,7 @@ export const AISettingsModal: React.FC<AISettingsModalProps> = ({ isOpen, onClos
         )}
 
         {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem', flexWrap: 'wrap' }}>
           {apiKey && (
             <button
               type="button"

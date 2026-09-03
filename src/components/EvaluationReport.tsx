@@ -57,19 +57,19 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
   };
 
   return (
-    <div style={{ maxWidth: '1040px', margin: '0 auto', padding: '1.5rem 0 4rem' }}>
+    <div style={{ maxWidth: '1040px', margin: '0 auto', padding: '1.5rem 0.75rem 4rem' }}>
       {/* Top action header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <span className="badge badge-emerald" style={{ marginBottom: '0.4rem' }}>
             Evaluation Complete • Evidence Verified
           </span>
-          <h2 style={{ fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
+          <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
             Candidate Credibility & Assessment Report
           </h2>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button onClick={handlePrint} className="btn btn-secondary" style={{ padding: '0.6rem 1.15rem' }}>
             <Printer size={16} />
             <span>Export / Print</span>
@@ -146,7 +146,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
           </h3>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
           {Object.entries(report.dimensions).map(([key, dim]) => (
             <div key={key} className="glass-card" style={{ padding: '1.35rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
@@ -242,7 +242,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
       </div>
 
       {/* Strengths & Weaknesses Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
         {/* Strengths */}
         <div className="glass-card" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6ee7b7', fontWeight: 700, marginBottom: '1rem' }}>
@@ -316,8 +316,8 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
       </div>
 
       {/* Footer Actions */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-        <button onClick={onRestart} className="btn btn-primary" style={{ padding: '0.85rem 2.5rem', fontSize: '1.05rem', borderRadius: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <button onClick={onRestart} className="btn btn-primary" style={{ padding: '0.85rem 2rem', fontSize: '1rem', borderRadius: '12px' }}>
           <Sparkles size={18} />
           <span>Conduct Another Interview</span>
         </button>

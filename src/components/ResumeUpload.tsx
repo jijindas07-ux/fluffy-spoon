@@ -181,12 +181,12 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
             onClick={() => fileInputRef.current?.click()}
             className="glass-card glass-card-interactive"
             style={{
-              padding: '3.5rem 2rem',
+              padding: '2.5rem 1rem',
               textAlign: 'center',
               border: isDragging ? '2px dashed var(--primary)' : '2px dashed var(--border-subtle)',
               background: isDragging ? 'rgba(99, 102, 241, 0.08)' : 'var(--bg-surface-glass)',
               cursor: 'pointer',
-              marginBottom: '2.5rem'
+              marginBottom: '2rem'
             }}
           >
             <input
@@ -201,26 +201,26 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
             />
 
             <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '16px',
+              width: '56px',
+              height: '56px',
+              borderRadius: '14px',
               background: 'rgba(99, 102, 241, 0.12)',
               border: '1px solid rgba(99, 102, 241, 0.3)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              margin: '0 auto 1.25rem'
+              margin: '0 auto 1rem'
             }}>
-              <UploadCloud size={32} color="#818cf8" />
+              <UploadCloud size={28} color="#818cf8" />
             </div>
 
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: '#ffffff' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '0.4rem', color: '#ffffff' }}>
               Drop candidate resume here, or <span style={{ color: 'var(--accent-cyan)' }}>browse files</span>
             </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.85rem' }}>
               Supports PDF, DOCX, and TXT files (Up to 10MB)
             </p>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
               <span className="badge badge-indigo">Auto-extracts claims</span>
               <span className="badge badge-emerald">Instant verification</span>
             </div>
@@ -228,11 +228,11 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
 
           {/* Quick Start Presets Section */}
           <div style={{ marginBottom: '2.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Sparkles size={16} color="#818cf8" />
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                  Or select a pre-loaded candidate profile to test immediately:
+                <Sparkles size={16} color="#818cf8" style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Or select a pre-loaded candidate profile:
                 </span>
               </div>
               <button
@@ -244,7 +244,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
             </div>
 
             {/* Presets Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
               {SAMPLE_CANDIDATES.map((preset) => (
                 <div
                   key={preset.id}

@@ -122,7 +122,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
   const latestAiQuestion = [...session.turns].reverse().find(t => t.speaker === 'ai');
 
   return (
-    <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '1rem 0 3rem' }}>
+    <div style={{ maxWidth: '1080px', margin: '0 auto', padding: '1rem 0.75rem 3rem' }}>
       {/* Top Header Controls & Live Timer */}
       <div className="glass-card" style={{ padding: '0.85rem 1.5rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -214,13 +214,13 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
         {/* Conversation Stream */}
         <div className="glass-card" style={{
-          padding: '1.5rem',
-          minHeight: '420px',
-          maxHeight: '520px',
+          padding: '1rem',
+          minHeight: '320px',
+          maxHeight: '60vh',
           overflowY: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: '1.25rem'
+          gap: '1rem'
         }}>
           {session.turns.map((turn, idx) => {
             const isAi = turn.speaker === 'ai';
@@ -229,11 +229,12 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
                 key={turn.id || idx}
                 style={{
                   display: 'flex',
-                  gap: '0.9rem',
+                  gap: '0.65rem',
                   alignItems: 'flex-start',
                   alignSelf: isAi ? 'flex-start' : 'flex-end',
                   flexDirection: isAi ? 'row' : 'row-reverse',
-                  maxWidth: '88%'
+                  maxWidth: '96%',
+                  width: '100%'
                 }}
               >
                 {/* Avatar */}
@@ -370,7 +371,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
               value={currentResponse}
               onChange={(e) => setCurrentResponse(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your technical response here... (Press Ctrl + Enter to submit)"
+              placeholder="Your response... (Ctrl+Enter to submit)"
               disabled={isSubmitting || session.status === 'completed'}
               style={{
                 width: '100%',
@@ -388,7 +389,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+            <div className="mobile-hide" style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
               Tip: Explain concrete trade-offs, tech stack details, and specific parameters for highest evaluation accuracy.
             </div>
 

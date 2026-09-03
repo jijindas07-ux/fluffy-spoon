@@ -55,51 +55,52 @@ export const Header: React.FC<HeaderProps> = ({ onReset, currentStep }) => {
         zIndex: 50,
         padding: '0.85rem 0'
       }}>
-        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div 
             onClick={onReset}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', cursor: 'pointer' }}
           >
             <div style={{
-              width: '38px',
-              height: '38px',
+              width: '36px',
+              height: '36px',
               borderRadius: '10px',
               background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)'
+              boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)',
+              flexShrink: 0
             }}>
-              <Bot size={22} color="#ffffff" />
+              <Bot size={20} color="#ffffff" />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
                   Verve<span style={{ color: 'var(--accent-cyan)' }}>AI</span>
                 </span>
-                <span className={`badge ${hasApiKey ? 'badge-cyan' : 'badge-indigo'}`} style={{ fontSize: '0.65rem', padding: '0.15rem 0.45rem' }}>
+                <span className={`badge ${hasApiKey ? 'badge-cyan' : 'badge-indigo'}`} style={{ fontSize: '0.6rem', padding: '0.15rem 0.4rem' }}>
                   {hasApiKey ? 'LLM Mode' : 'Cognitive Engine'}
                 </span>
               </div>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>
+              <span className="mobile-hide" style={{ fontSize: '0.7rem', color: 'var(--text-faint)' }}>
                 Claim-Verified Autonomous Technical Interviewer
               </span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {/* Active Engine Badge Button */}
             <button
               onClick={() => setIsSettingsOpen(true)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.4rem 0.85rem',
+                gap: '0.4rem',
+                padding: '0.35rem 0.75rem',
                 borderRadius: '9999px',
                 background: hasApiKey ? 'rgba(6, 182, 212, 0.12)' : 'rgba(255, 255, 255, 0.04)',
                 border: hasApiKey ? '1px solid rgba(6, 182, 212, 0.4)' : '1px solid var(--border-subtle)',
-                fontSize: '0.8rem',
+                fontSize: '0.78rem',
                 color: hasApiKey ? '#ffffff' : 'var(--text-muted)',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
@@ -107,21 +108,22 @@ export const Header: React.FC<HeaderProps> = ({ onReset, currentStep }) => {
               title="Click to configure AI Engine / API Keys"
             >
               <span style={{
-                width: '8px',
-                height: '8px',
+                width: '7px',
+                height: '7px',
                 borderRadius: '50%',
                 backgroundColor: hasApiKey ? 'var(--accent-cyan)' : 'var(--accent-emerald)',
-                boxShadow: hasApiKey ? '0 0 8px var(--accent-cyan)' : '0 0 8px var(--accent-emerald)'
+                boxShadow: hasApiKey ? '0 0 8px var(--accent-cyan)' : '0 0 8px var(--accent-emerald)',
+                flexShrink: 0
               }} />
-              <span>{activeEngineLabel}</span>
-              <Settings size={14} style={{ opacity: 0.7 }} />
+              <span style={{ whiteSpace: 'nowrap' }}>{activeEngineLabel}</span>
+              <Settings size={13} style={{ opacity: 0.7, flexShrink: 0 }} />
             </button>
 
             {currentStep !== 'landing' && (
               <button 
                 onClick={onReset}
                 className="btn btn-secondary"
-                style={{ fontSize: '0.82rem', padding: '0.45rem 0.95rem' }}
+                style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', whiteSpace: 'nowrap' }}
               >
                 New Interview
               </button>
