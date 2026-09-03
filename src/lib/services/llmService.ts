@@ -13,9 +13,14 @@ export class LLMService {
    * Determine available LLM provider and key
    */
   public static getEffectiveConfig(clientConfig?: Partial<LLMConfig>): LLMConfig | null {
-    const geminiKey = clientConfig?.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    const openaiKey = clientConfig?.apiKey || process.env.OPENAI_API_KEY;
-    const groqKey = clientConfig?.apiKey || process.env.GROQ_API_KEY;
+    const serverGeminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const serverOpenaiKey = process.env.OPENAI_API_KEY;
+    const serverGroqKey = process.env.GROQ_API_KEY;
+
+    // Prioritize valid server keys first (so client stale localStorage doesn't break server key)
+    if (serverGeminiKey) {
+      return { provider: 'gemini', apiKey: serverGeminiKey, model: clientConfig?.model || 'gemini-3.6-flash' };
+    }
 
     if (clientConfig?.provider === 'gemini' && clientConfig?.apiKey) {
       return { provider: 'gemini', apiKey: clientConfig.apiKey, model: clientConfig.model || 'gemini-3.6-flash' };
@@ -27,14 +32,14 @@ export class LLMService {
       return { provider: 'groq', apiKey: clientConfig.apiKey, model: clientConfig.model || 'llama-3.3-70b-versatile' };
     }
 
-    if (geminiKey) {
-      return { provider: 'gemini', apiKey: geminiKey, model: clientConfig?.model || 'gemini-3.6-flash' };
+    if (clientConfig?.apiKey) {
+      return { provider: clientConfig.provider || 'gemini', apiKey: clientConfig.apiKey, model: clientConfig.model || 'gemini-3.6-flash' };
     }
-    if (openaiKey) {
-      return { provider: 'openai', apiKey: openaiKey, model: clientConfig?.model || 'gpt-4o-mini' };
+    if (serverOpenaiKey) {
+      return { provider: 'openai', apiKey: serverOpenaiKey, model: clientConfig?.model || 'gpt-4o-mini' };
     }
-    if (groqKey) {
-      return { provider: 'groq', apiKey: groqKey, model: clientConfig?.model || 'llama-3.3-70b-versatile' };
+    if (serverGroqKey) {
+      return { provider: 'groq', apiKey: serverGroqKey, model: clientConfig?.model || 'llama-3.3-70b-versatile' };
     }
 
     return null;
@@ -117,7 +122,7 @@ Respond ONLY with a valid JSON object matching this schema:
           id: `cand-${Date.now()}`,
           name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
           title: parsed.title || 'Professional',
-          experienceYears: Number(parsed.experienceYears) || 3,
+          experienceYears: Number(parsed.experienceYears) || 0,
           summary: parsed.summary || 'Demonstrated technical and professional experience documented on resume.',
           skills: {
             languages: parsed.skills?.languages || [],
@@ -127,12 +132,13 @@ Respond ONLY with a valid JSON object matching this schema:
           },
           projects: parsed.projects || [],
           education: parsed.education || [],
+          parserSource: hasPdfAttachment ? 'gemini_multimodal' : 'gemini_text',
           claims: parsed.claims.map((c: any, i: number) => ({
             id: c.id || `claim-${i + 1}`,
             rawClaim: c.rawClaim || 'Demonstrated professional accomplishment',
-            category: c.category || 'Experience',
+            category: c.category || 'Architecture',
             contextProject: c.contextProject || 'Project Experience',
-            claimedMetrics: c.claimedMetrics || 'N/A',
+            claimedMetrics: c.claimedMetrics || 'Documented Highlight',
             confidenceLevel: c.confidenceLevel || 'High',
             verificationStatus: 'Pending'
           }))

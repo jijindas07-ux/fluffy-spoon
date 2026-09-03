@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractClaimsFromText } from '@/lib/engine/claimExtractor';
-import { extractTextFromPdfBuffer, cleanPdfText } from '@/lib/engine/pdfParser';
+import { extractTextFromPdfBuffer, cleanPdfText, extractKeyPointsFromPdfText } from '@/lib/engine/pdfParser';
 import { SAMPLE_CANDIDATES } from '@/lib/data/sampleResumes';
 import { memoryStore } from '@/lib/db/client';
 import { LLMService, LLMConfig } from '@/lib/services/llmService';
@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
       const preset = SAMPLE_CANDIDATES.find(c => c.id === presetId);
       profile = preset || SAMPLE_CANDIDATES[0];
     } else {
+      // Direct PDF Key Point Extraction (100% native, without AI)
+      const directKeyPoints = extractKeyPointsFromPdfText(rawText);
+
       // Check if LLM / AI key is configured
       const effectiveLLM = LLMService.getEffectiveConfig(clientLLMConfig);
       if (effectiveLLM && (rawText.length > 10 || pdfBase64)) {
@@ -67,12 +70,23 @@ export async function POST(req: NextRequest) {
       // Fallback to intelligent local claim extractor if AI unavailable or returned null
       if (!profile) {
         profile = extractClaimsFromText(rawText || `Resume document for ${candidateName}`, candidateName);
+        profile.parserSource = 'direct_pdf_parser';
       }
+
+      // Attach raw scanned text and verbatim key points from the PDF (without AI)
+      profile.rawExtractedText = rawText;
+      profile.scannedKeyPoints = directKeyPoints;
     }
 
     await memoryStore.saveCandidate(profile);
 
-    return NextResponse.json({ success: true, profile, textLength: rawText.length });
+    return NextResponse.json({ 
+      success: true, 
+      profile, 
+      textLength: rawText.length,
+      keyPointsCount: profile.scannedKeyPoints?.length || 0,
+      parserSource: profile.parserSource || 'gemini_multimodal'
+    });
   } catch (error: any) {
     console.error('Error parsing resume:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

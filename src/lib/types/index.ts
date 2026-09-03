@@ -44,6 +44,9 @@ export interface CandidateProfile {
     year: string;
   }[];
   claims: ResumeClaim[];
+  rawExtractedText?: string;
+  scannedKeyPoints?: string[];
+  parserSource?: 'gemini_multimodal' | 'gemini_text' | 'direct_pdf_parser';
 }
 
 export interface InterviewConfig {

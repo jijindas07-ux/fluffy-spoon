@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { CandidateProfile as CandidateProfileType } from '@/lib/types';
-import { User, Briefcase, Code, Database, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Award } from 'lucide-react';
+import { User, Briefcase, Code, Database, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Award, FileText, ListChecks, Eye, ChevronDown, ChevronUp, Cpu } from 'lucide-react';
 
 interface CandidateProfileProps {
   profile: CandidateProfileType;
@@ -11,6 +11,13 @@ interface CandidateProfileProps {
 }
 
 export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile, onProceed, onBack }) => {
+  const [activeTab, setActiveTab] = useState<'claims' | 'scanned_pdf'>('claims');
+  const [showRawText, setShowRawText] = useState(false);
+
+  const keyPoints = profile.scannedKeyPoints || [];
+  const rawText = profile.rawExtractedText || '';
+  const isAiParsed = profile.parserSource === 'gemini_multimodal' || profile.parserSource === 'gemini_text';
+
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: '1.5rem 0 3.5rem' }}>
       {/* Header breadcrumb & navigation */}
@@ -52,14 +59,16 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)',
               flexShrink: 0
             }}>
-              {profile.name.split(' ').map(n => n[0]).join('')}
+              {(profile.name || 'C').split(' ').map(n => n[0] || '').join('').slice(0, 2)}
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem', flexWrap: 'wrap' }}>
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#ffffff' }}>
                   {profile.name}
                 </h3>
-                <span className="badge badge-emerald">Parsed Active</span>
+                <span className={isAiParsed ? "badge badge-emerald" : "badge badge-cyan"}>
+                  {isAiParsed ? '🤖 Gemini AI Scanned' : '📄 Direct PDF Parsed'}
+                </span>
               </div>
               <p style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.2rem' }}>
                 {profile.title}
@@ -67,6 +76,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
                 {profile.experienceYears > 0 && <span>🎯 {profile.experienceYears}+ Years Exp</span>}
                 {profile.location && <span>📍 {profile.location}</span>}
+                {rawText.length > 0 && <span>📝 {rawText.length} Characters Scanned</span>}
               </div>
             </div>
           </div>
@@ -80,7 +90,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Extracted Claims
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary-light)' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#6366f1' }}>
               {profile.claims.length} Verifiable Items
             </div>
           </div>
@@ -93,8 +103,53 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
         )}
       </div>
 
-      {/* Extracted Verifiable Claims (Target Anchors for Adaptive Interview) */}
-      {profile.claims && profile.claims.length > 0 && (
+      {/* Tab Switcher: Targeted AI Claims vs Scanned PDF Key Points */}
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', flexWrap: 'wrap' }}>
+        <button
+          onClick={() => setActiveTab('claims')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.6rem 1.25rem',
+            borderRadius: '8px',
+            border: activeTab === 'claims' ? '1px solid var(--primary)' : '1px solid transparent',
+            background: activeTab === 'claims' ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+            color: activeTab === 'claims' ? '#ffffff' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <ShieldCheck size={16} color={activeTab === 'claims' ? '#818cf8' : '#94a3b8'} />
+          <span>Targeted Claims ({profile.claims.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('scanned_pdf')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.6rem 1.25rem',
+            borderRadius: '8px',
+            border: activeTab === 'scanned_pdf' ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+            background: activeTab === 'scanned_pdf' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+            color: activeTab === 'scanned_pdf' ? '#67e8f9' : 'var(--text-muted)',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <ListChecks size={16} color={activeTab === 'scanned_pdf' ? '#06b6d4' : '#94a3b8'} />
+          <span>Scanned PDF Key Points ({keyPoints.length})</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Targeted AI Claims */}
+      {activeTab === 'claims' && (
         <div style={{ marginBottom: '1.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
             <ShieldCheck size={18} color="#818cf8" style={{ flexShrink: 0 }} />
@@ -148,6 +203,106 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Tab 2: Scanned PDF Key Points (Pure Document Extraction Without Gemini) */}
+      {activeTab === 'scanned_pdf' && (
+        <div style={{ marginBottom: '1.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FileText size={18} color="#06b6d4" style={{ flexShrink: 0 }} />
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+                Verbatim Key Points Extracted Directly from PDF
+              </h4>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
+              Native PDF Extraction • Zero AI Modification
+            </span>
+          </div>
+
+          {keyPoints.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {keyPoints.map((point, idx) => (
+                <div
+                  key={idx}
+                  className="glass-card"
+                  style={{
+                    padding: '0.85rem 1.15rem',
+                    borderLeft: '3px solid var(--accent-cyan)',
+                    background: 'rgba(6, 182, 212, 0.04)',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem'
+                  }}
+                >
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    color: 'var(--accent-cyan)',
+                    background: 'rgba(6, 182, 212, 0.12)',
+                    padding: '0.15rem 0.45rem',
+                    borderRadius: '4px',
+                    flexShrink: 0,
+                    marginTop: '0.1rem'
+                  }}>
+                    #{idx + 1}
+                  </span>
+                  <div style={{ fontSize: '0.88rem', color: '#f1f5f9', lineHeight: 1.5 }}>
+                    {point}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No bullet points detected in scanned stream. Check the raw text inspector below.
+            </div>
+          )}
+
+          {/* Raw Scanned Text Collapsible Drawer */}
+          {rawText.length > 0 && (
+            <div style={{ marginTop: '1.25rem' }}>
+              <button
+                onClick={() => setShowRawText(!showRawText)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.6rem 1rem',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px',
+                  color: 'var(--text-main)',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <Eye size={14} />
+                <span>{showRawText ? 'Hide Raw Scanned Document Stream' : 'View Full Raw Scanned Document Stream'} ({rawText.length} chars)</span>
+                {showRawText ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+
+              {showRawText && (
+                <div style={{
+                  marginTop: '0.75rem',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px',
+                  padding: '1rem',
+                  maxHeight: '350px',
+                  overflowY: 'auto',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '0.8rem',
+                  color: '#94a3b8',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.6
+                }}>
+                  {rawText}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

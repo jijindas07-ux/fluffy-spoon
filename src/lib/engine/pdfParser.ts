@@ -47,6 +47,52 @@ export function cleanPdfText(rawText: string): string {
 }
 
 /**
+ * Extract distinct, verbatim key points from the scanned PDF text without AI.
+ * Captures bullet points, action statements, metrics, and experience highlights.
+ */
+export function extractKeyPointsFromPdfText(rawText: string): string[] {
+  if (!rawText) return [];
+
+  const cleaned = cleanPdfText(rawText);
+  const rawLines = cleaned.split('\n').map(l => l.trim()).filter(Boolean);
+  const keyPoints: string[] = [];
+  const seen = new Set<string>();
+
+  const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|\$))/i;
+  const actionVerbRegex = /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|integrated|collaborated|executed|configured|deployed|mentored|authored|refactored|secured|migrated)\b/i;
+
+  for (const line of rawLines) {
+    // Strip leading bullet marks
+    let cleanLine = line.replace(/^[•\-\*\+\d\.\)\:\>\s]+/, '').trim();
+    if (cleanLine.length < 20 || cleanLine.length > 300) continue;
+
+    // Filter out standard section headers
+    if (/^(experience|education|skills|summary|projects|contact|certifications|awards|languages|hobbies|references|interests|technical skills|professional experience)$/i.test(cleanLine)) {
+      continue;
+    }
+
+    // Check if line is a bullet point or key statement
+    const isBullet = line.startsWith('•') || line.startsWith('-') || line.startsWith('*') || /^\d+\./.test(line);
+    const hasMetrics = metricsRegex.test(cleanLine);
+    const startsWithAction = actionVerbRegex.test(cleanLine);
+
+    if (isBullet || hasMetrics || startsWithAction || cleanLine.length > 45) {
+      // Normalize capitalization
+      cleanLine = cleanLine.charAt(0).toUpperCase() + cleanLine.slice(1);
+      if (!/[.!?]$/.test(cleanLine)) cleanLine += '.';
+
+      const lowerKey = cleanLine.toLowerCase().slice(0, 60);
+      if (!seen.has(lowerKey)) {
+        seen.add(lowerKey);
+        keyPoints.push(cleanLine);
+      }
+    }
+  }
+
+  return keyPoints;
+}
+
+/**
  * Decode PDF octal escapes \ddd in raw PDF literal strings
  */
 function decodePdfOctalString(raw: string): string {
