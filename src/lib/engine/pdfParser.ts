@@ -1,17 +1,43 @@
 import zlib from 'zlib';
 
 /**
+ * Checks if a string contains legitimate, human-readable English text rather than
+ * font index bytes, escape codes, or binary debris.
+ */
+export function isReadableEnglishText(text: string): boolean {
+  if (!text || text.trim().length < 15) return false;
+
+  const clean = text.replace(/\s+/g, ' ').trim();
+  
+  // Reject if it contains excessive backslashes or escape code artifacts
+  const backslashCount = (clean.match(/\\[a-zA-Z0-9]/g) || []).length;
+  if (backslashCount > 2) return false;
+
+  // Count alphabetic characters
+  const letters = (clean.match(/[a-zA-Z]/g) || []).length;
+  const nonSpace = clean.replace(/\s/g, '').length;
+  if (nonSpace === 0 || letters / nonSpace < 0.55) return false;
+
+  // Check for at least 3 genuine English words (3+ alphabetic chars)
+  const words = clean.split(/\s+/).filter(w => /^[a-zA-Z]{3,}/.test(w));
+  return words.length >= 3;
+}
+
+/**
  * Clean and sanitize extracted text from PDF documents.
  * Fixes broken formatting, PDF ligatures, CID codes, hyphenated line wraps,
- * octal escape codes, and non-English / corrupted font artifacts.
+ * octal escape codes, escape debris (\t \b \r \n \f), and corrupted font artifacts.
  */
 export function cleanPdfText(rawText: string): string {
   if (!rawText) return '';
 
   let cleaned = rawText
+    // Remove literal string escapes like \t, \b, \r, \n, \f, \v, \\
+    .replace(/\\[tbrnfv\\]/g, ' ')
     // Remove octal string codes like \001\000\002\000\003\000
     .replace(/\\00[0-7]/g, ' ')
     .replace(/\\u00[0-1][0-9a-fA-F]/g, ' ')
+    .replace(/\\x[0-9a-fA-F]{2}/g, ' ')
     // Remove null bytes and invisible control characters
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\u0000-\u001F]/g, ' ')
     // Replace CID font markers like (cid:123)
@@ -26,7 +52,11 @@ export function cleanPdfText(rawText: string): string {
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, '\n• ')
-    .replace(/\u00A0/g, ' ');
+    .replace(/\u00A0/g, ' ')
+    // Remove standalone non-word symbols scattered across spaces (e.g. " ! # $ % & ' ")
+    .replace(/(?:\s[^\w\s]{1,2}\s)+/g, ' ')
+    // Clean excessive slashes
+    .replace(/\\+/g, ' ');
 
   // Fix hyphenated words split across line breaks (e.g. "micro-\nservices" -> "microservices")
   cleaned = cleaned.replace(/([a-zA-Z]{2,})-\s*[\r\n]+\s*([a-zA-Z]{2,})/g, '$1$2');
@@ -34,14 +64,14 @@ export function cleanPdfText(rawText: string): string {
   // Replace excessive carriage returns / newlines with clean double newline
   cleaned = cleaned.replace(/(\r\n|\r|\n){3,}/g, '\n\n');
 
-  // Clean lines: strip leading bullet junk and whitespace
+  // Clean lines: strip leading bullet junk and filter only readable lines
   const lines = cleaned.split('\n').map(line => {
     let l = line.trim();
     // Normalize BOM and leading garbage
     l = l.replace(/^[\uFEFF\uFFFE\u00EF\u00BB\u00BF]+/, '');
     l = l.replace(/^[^\w\s•\-\(\)\[\]"'.,:;/$%#&%+@]+/, '');
     return l;
-  }).filter(line => line.length > 0);
+  }).filter(line => isReadableEnglishText(line));
 
   return lines.join('\n');
 }
@@ -59,12 +89,14 @@ export function extractKeyPointsFromPdfText(rawText: string): string[] {
   const seen = new Set<string>();
 
   const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|\$))/i;
-  const actionVerbRegex = /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|integrated|collaborated|executed|configured|deployed|mentored|authored|refactored|secured|migrated)\b/i;
+  const actionVerbRegex = /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|integrated|collaborated|executed|configured|deployed|mentored|refactored|secured|migrated|authored|tested)\b/i;
 
   for (const line of rawLines) {
+    if (!isReadableEnglishText(line)) continue;
+
     // Strip leading bullet marks
     let cleanLine = line.replace(/^[•\-\*\+\d\.\)\:\>\s]+/, '').trim();
-    if (cleanLine.length < 20 || cleanLine.length > 300) continue;
+    if (cleanLine.length < 25 || cleanLine.length > 300) continue;
 
     // Filter out standard section headers
     if (/^(experience|education|skills|summary|projects|contact|certifications|awards|languages|hobbies|references|interests|technical skills|professional experience)$/i.test(cleanLine)) {
@@ -76,12 +108,12 @@ export function extractKeyPointsFromPdfText(rawText: string): string[] {
     const hasMetrics = metricsRegex.test(cleanLine);
     const startsWithAction = actionVerbRegex.test(cleanLine);
 
-    if (isBullet || hasMetrics || startsWithAction || cleanLine.length > 45) {
+    if (isBullet || hasMetrics || startsWithAction || cleanLine.length > 40) {
       // Normalize capitalization
       cleanLine = cleanLine.charAt(0).toUpperCase() + cleanLine.slice(1);
       if (!/[.!?]$/.test(cleanLine)) cleanLine += '.';
 
-      const lowerKey = cleanLine.toLowerCase().slice(0, 60);
+      const lowerKey = cleanLine.toLowerCase().slice(0, 50);
       if (!seen.has(lowerKey)) {
         seen.add(lowerKey);
         keyPoints.push(cleanLine);
