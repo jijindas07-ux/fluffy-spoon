@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     // Add candidate turn
     const candidateTurn: ConversationTurn = {
-      id: `turn-cand-${Date.now()}`,
+      id: `turn-cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       speaker: 'candidate',
       text: answerText.trim(),
       timestamp: Date.now(),
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     // Add AI turn
     const aiTurn: ConversationTurn = {
-      id: `turn-ai-${Date.now()}`,
+      id: `turn-ai-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       speaker: 'ai',
       text: nextQResult.question,
       timestamp: Date.now(),

@@ -8,31 +8,16 @@ import { cleanPdfText, isReadableEnglishText, stripPdfSyntax } from './pdfParser
 export function sanitizeClaimToEnglish(text: string): string {
   if (!text) return '';
 
-  let cleaned = stripPdfSyntax(text)
-    // Remove literal string escapes like \t, \b, \r, \n, \f, \v, \\
-    .replace(/\\[tbrnfv\\]/g, ' ')
-    // Remove octal string codes like \001\000\002\000\003\000
-    .replace(/\\00[0-7]/g, ' ')
-    .replace(/\\u00[0-1][0-9a-fA-F]/g, ' ')
-    .replace(/\\x[0-9a-fA-F]{2}/g, ' ')
-    // Remove bullet marks, dashes, numbers, special leading characters, stray parens
-    .replace(/^[•\-\*\+\d\.\)\:\>\s/\\;,|#%@]+/, '')
-    // Remove trailing orphan parens or punctuation
-    .replace(/[)\]}>/\\;,|#%@]+$/, '')
-    // Remove PDF garbage & CID tags
-    .replace(/\(cid:\d+\)/gi, '')
-    .replace(/[\x00-\x1F\x7F-\x9F\u0000-\u001F]/g, '')
-    // Remove scattered single-char symbols
-    .replace(/(?:\s[^\w\s]{1,2}\s)+/g, ' ')
+  let cleaned = cleanPdfText(text)
+    // Remove leading bullet marks, numbers, or dashes
+    .replace(/^[•\-\*\+\d\.\)\:\>\s|#]+/, '')
+    // Remove trailing orphan punctuation
+    .replace(/[)\]}>/\\;,|#]+$/, '')
     // Replace multiple spaces
-    .replace(/\s+/g, ' ')
+    .replace(/[ \t]+/g, ' ')
     .trim();
 
-  if (!cleaned || !isReadableEnglishText(cleaned)) return '';
-
-  // Reject leftover PDF syntax tokens
-  if (/\/(?:Parent|Dest|XYZ|Title|Prev|Next|Font|stream|endobj|endstream)\b/i.test(cleaned)) return '';
-  if (/\b\d+\s+\d+\s+R\b/.test(cleaned)) return '';
+  if (!cleaned || cleaned.length < 10) return '';
 
   // Capitalize first character
   cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
@@ -53,10 +38,27 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
   const cleanedText = cleanPdfText(rawText || '');
   const lines = cleanedText.split('\n').map(l => l.trim()).filter(l => isReadableEnglishText(l));
 
-  // 1. Detect Real Candidate Name from Resume
-  let detectedName = candidateName;
-  if (!detectedName || detectedName === 'Candidate' || detectedName === 'Custom_Resume' || detectedName.startsWith('Resume')) {
-    // Check if there's an email like firstname.lastname@domain.com
+  // 1. Detect Real Candidate Name from Resume Text (Document content is source of truth)
+  let detectedName = '';
+
+  // Check top lines of extracted document text for candidate name
+  for (const line of lines.slice(0, 6)) {
+    const cleanLine = line.replace(/^[^\w\s]+/, '').replace(/[^\w\s'-]/g, '').trim();
+    const words = cleanLine.split(/\s+/);
+    if (
+      words.length >= 2 && 
+      words.length <= 4 && 
+      cleanLine.length >= 4 &&
+      cleanLine.length < 35 && 
+      !/resume|curriculum|cv|email|phone|experience|summary|skills|education|profile|objective|contact|page\s*\d|portfolio|github|linkedin|developer|engineer|manager/i.test(cleanLine)
+    ) {
+      detectedName = cleanLine;
+      break;
+    }
+  }
+
+  // Check if there's an email like firstname.lastname@domain.com if name not found in header lines
+  if (!detectedName) {
     const emailMatch = rawText.match(/([a-zA-Z0-9_.+-]+)@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/);
     if (emailMatch) {
       const emailUser = emailMatch[1].replace(/[._-]/g, ' ');
@@ -65,24 +67,14 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
         detectedName = nameParts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
       }
     }
-
-    // Check top lines for candidate name
-    for (const line of lines.slice(0, 5)) {
-      const cleanLine = line.replace(/^[^\w\s]+/, '').replace(/[^\w\s'-]/g, '').trim();
-      const words = cleanLine.split(/\s+/);
-      if (
-        words.length >= 2 && 
-        words.length <= 4 && 
-        cleanLine.length < 35 && 
-        !/resume|curriculum|cv|email|phone|experience|summary|skills|education|profile|objective|contact/i.test(cleanLine)
-      ) {
-        detectedName = cleanLine;
-        break;
-      }
-    }
   }
 
-  if (!detectedName || detectedName === 'Candidate' || detectedName === 'Custom_Resume') {
+  // If still not detected in document text, fallback to candidateName parameter from upload if valid
+  if (!detectedName && candidateName && candidateName !== 'Candidate' && candidateName !== 'Custom_Resume') {
+    detectedName = candidateName.replace(/\bresume\b/gi, '').trim();
+  }
+
+  if (!detectedName) {
     detectedName = 'Candidate';
   }
 
@@ -169,7 +161,26 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     'github': { set: toolsAndInfra, canonical: 'GitHub' },
     'terraform': { set: toolsAndInfra, canonical: 'Terraform' },
     'linux': { set: toolsAndInfra, canonical: 'Linux' },
-    'graphql': { set: toolsAndInfra, canonical: 'GraphQL' }
+    'graphql': { set: toolsAndInfra, canonical: 'GraphQL' },
+
+    // Recruiting, HR, ATS & Operations Tools
+    'workable': { set: toolsAndInfra, canonical: 'Workable ATS' },
+    'bamboohr': { set: toolsAndInfra, canonical: 'BambooHR' },
+    'ibridge': { set: toolsAndInfra, canonical: 'iBridge' },
+    'linkedin': { set: toolsAndInfra, canonical: 'LinkedIn Recruiter' },
+    'naukri': { set: toolsAndInfra, canonical: 'Naukri' },
+    'indeed': { set: toolsAndInfra, canonical: 'Indeed' },
+    'greenhouse': { set: toolsAndInfra, canonical: 'Greenhouse' },
+    'lever': { set: toolsAndInfra, canonical: 'Lever' },
+    'workday': { set: toolsAndInfra, canonical: 'Workday' },
+    'outlook': { set: toolsAndInfra, canonical: 'Microsoft Outlook' },
+    'jira': { set: toolsAndInfra, canonical: 'Jira' },
+    'ats': { set: frameworks, canonical: 'ATS Management' },
+    'hris': { set: frameworks, canonical: 'HRIS' },
+    'talent acquisition': { set: frameworks, canonical: 'Talent Acquisition' },
+    'campus hiring': { set: frameworks, canonical: 'Campus Hiring' },
+    'lateral hiring': { set: frameworks, canonical: 'Lateral Recruitment' },
+    'boolean search': { set: frameworks, canonical: 'Boolean Search' }
   };
 
   for (const line of lines) {
@@ -196,7 +207,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
 
   // 5. Extract Real Claims: Split by sentence boundaries (. , \n, •) so claims are short and concise
   const extractedClaims: ResumeClaim[] = [];
-  const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|interviews|profiles|applications|drives|roles|projects|\$))/i;
+  const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|interviews|profiles|applications|drives|roles|projects|candidates|positions|requisitions|loops|\$))/i;
 
   // Split raw text into individual distinct sentences
   const rawSentences: string[] = [];
@@ -220,10 +231,18 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       continue;
     }
 
-    // Strip leading header keywords if prepended to a statement
-    sanitized = sanitized.replace(/^(?:professional summary|summary|overview|profile|experience|objective)\s*[:\-–]?\s*/i, '').trim();
+    // Strip leading header keywords only if separated by colon/dash (do not strip words like 'Experienced')
+    sanitized = sanitized.replace(/^(?:professional summary|summary|overview|profile|work experience|career objective|objective)\s*[:\-–]\s*/i, '').trim();
     sanitized = sanitizeClaimToEnglish(sanitized);
     if (!sanitized || sanitized.length < 25) continue;
+
+    // Strip leading role title prefixes (e.g., "RECRUITMENT MANAGER: ")
+    sanitized = sanitized.replace(/^[A-Z\s]{4,}\s*:\s*/, '').trim();
+    sanitized = sanitizeClaimToEnglish(sanitized);
+    if (!sanitized || sanitized.length < 25) continue;
+
+    // Filter out pure job header lines with dates like "Aventurine Homes - Bengaluru [May 2026 - Present]"
+    if (/[-–—].*\[.*\d{4}/i.test(sanitized) || /\[\w+\s+\d{4}\s*[-–—]/i.test(sanitized) || /\|\s*talent acquisition/i.test(sanitized)) continue;
 
     // Reject if sentence contains excessive non-alphabet tokens or leftover PDF syntax
     if (/\/(?:Parent|Dest|XYZ|Title|Prev|Next|Font|stream|endobj|endstream)\b/i.test(sanitized)) continue;
@@ -245,7 +264,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
 
     const isClaimCandidate = 
       metricsRegex.test(sanitized) || 
-      /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|sourced|screened|conducted|reviewed|partnered|recruited|initiated|tracked|deployed|migrated|configured)\b/i.test(sanitized) ||
+      /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|sourced|screened|conducted|reviewed|partnered|recruited|initiated|tracked|deployed|migrated|configured|facilitated)\b/i.test(sanitized) ||
       (sanitized.length >= 35 && sanitized.length <= 140 && !sanitized.includes('@') && !sanitized.includes('http'));
 
     if (isClaimCandidate) {
@@ -253,15 +272,15 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       const metrics = match ? match[0] : 'Documented Highlight';
 
       let category: ResumeClaim['category'] = 'Architecture';
-      if (/user|traffic|scale|load|million|billion|concurrent|throughput|volume|campus|lateral|hiring|interviews|applications/i.test(sanitized)) {
+      if (/user|traffic|scale|load|million|billion|concurrent|throughput|volume|campus|lateral|hiring|interviews|applications|candidates|requisitions/i.test(sanitized)) {
         category = 'Scale & Traffic';
-      } else if (/database|sql|postgres|redis|mongo|storage|cache|kafka|query|data|ats|profiles|pipeline/i.test(sanitized)) {
+      } else if (/database|sql|postgres|redis|mongo|storage|cache|kafka|query|data|ats|profiles|pipeline|crm|hris/i.test(sanitized)) {
         category = 'Database & Storage';
-      } else if (/latency|p95|p99|speed|ms|fast|throughput|optimized|performance|response time|cost|reduction|turnaround/i.test(sanitized)) {
+      } else if (/latency|p95|p99|speed|ms|fast|throughput|optimized|performance|response time|cost|reduction|turnaround|sla/i.test(sanitized)) {
         category = 'Performance & Latency';
-      } else if (/uptime|sla|resilient|ci\/cd|kubernetes|docker|deploy|aws|cloud|monitoring|security|onboarding|operations/i.test(sanitized)) {
+      } else if (/uptime|resilient|ci\/cd|kubernetes|docker|deploy|aws|cloud|monitoring|security|onboarding|operations|verification/i.test(sanitized)) {
         category = 'Reliability & CI/CD';
-      } else if (/lead|managed|team|mentored|spearheaded|directed|coordinated|hired|partner/i.test(sanitized)) {
+      } else if (/lead|managed|team|mentored|spearheaded|directed|coordinated|hired|partner|stakeholder/i.test(sanitized)) {
         category = 'Leadership';
       } else {
         category = 'Architecture';
@@ -285,44 +304,26 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     }
   }
 
-  // If fewer than 3 claims extracted due to non-standard resume text format, synthesize clean domain claims
-  if (extractedClaims.length < 3) {
-    const techHighlights = Array.from(languages).concat(Array.from(frameworks)).slice(0, 3).join(', ');
-    const defaultClaims = [
-      {
-        rawClaim: `Architected and implemented production software systems using ${techHighlights || 'modern full-stack technologies'}.`,
-        category: 'Architecture' as const,
-        claimedMetrics: 'Production Systems'
-      },
-      {
-        rawClaim: `Engineered scalable application workflows and maintained robust API and service integration contracts.`,
-        category: 'Scale & Traffic' as const,
-        claimedMetrics: 'Service Integration'
-      },
-      {
-        rawClaim: `Optimized execution performance, database interactions, and overall runtime efficiency.`,
-        category: 'Performance & Latency' as const,
-        claimedMetrics: 'Performance Optimization'
-      },
-      {
-        rawClaim: `Collaborated on system reliability, CI/CD automated deployment, and test-driven code quality.`,
-        category: 'Reliability & CI/CD' as const,
-        claimedMetrics: 'Reliability & Quality'
-      }
-    ];
-
-    for (const c of defaultClaims) {
+  // If fewer than 2 claims extracted from bullet points, extract clean grounded claims from resume lines
+  if (extractedClaims.length < 2) {
+    for (const line of lines) {
       if (extractedClaims.length >= 4) break;
-      const lowerKey = c.rawClaim.toLowerCase().slice(0, 40);
-      if (!seenClaims.has(lowerKey)) {
-        seenClaims.add(lowerKey);
+      const cleanLine = sanitizeClaimToEnglish(line);
+      if (
+        cleanLine.length >= 25 && 
+        cleanLine.length <= 140 && 
+        !cleanLine.includes('@') && 
+        !cleanLine.includes('http') &&
+        !seenClaims.has(cleanLine.toLowerCase().slice(0, 40))
+      ) {
+        seenClaims.add(cleanLine.toLowerCase().slice(0, 40));
         extractedClaims.push({
           id: `claim-${claimIdx++}`,
-          rawClaim: c.rawClaim,
-          category: c.category,
-          contextProject: 'Career Background',
-          claimedMetrics: c.claimedMetrics,
-          confidenceLevel: 'High',
+          rawClaim: cleanLine,
+          category: 'Architecture',
+          contextProject: 'Documented Experience',
+          claimedMetrics: 'Documented Highlight',
+          confidenceLevel: 'Medium',
           verificationStatus: 'Pending'
         });
       }
@@ -342,28 +343,88 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
   if (!realSummary) {
     const skillsList = [...Array.from(languages), ...Array.from(frameworks)].slice(0, 4).join(', ');
     realSummary = skillsList
-      ? `${detectedTitle} with documented technical expertise in ${skillsList}.`
-      : `Experienced ${detectedTitle} with documented technical background.`;
+      ? `${detectedTitle} with documented expertise in ${skillsList}.`
+      : `Documented resume for ${detectedName} (${detectedTitle}).`;
   }
 
-  // 7. Extract Real Education from resume lines if present
+  // 7. Extract Real Education & Institutions from resume lines
   const educationList: CandidateProfile['education'] = [];
   for (const line of lines) {
-    if (/bachelor|master|phd|b\.s|m\.s|b\.e|b\.tech|m\.tech|degree|university|institute|college|graduated/i.test(line)) {
-      const sanitized = sanitizeClaimToEnglish(line).replace(/\.$/, '');
-      if (sanitized.length > 10 && sanitized.length < 90) {
+    const cleanLine = line.replace(/^[•\-\*\+\d\.\)\:\>\s|#]+/, '').trim();
+    if (/^(?:provided|managed|taught|mentored|guided|conducted|coached|trained|supported|scheduled|facilitated|coordinated|partnered|sourced|screened|evaluated|reviewed|prepared|initiated|tracked|built|ensured)\b/i.test(cleanLine)) {
+      continue;
+    }
+    if (
+      /\b(?:bachelor|master|phd|b\.s|m\.s|b\.e|b\.tech|m\.tech|mba|bba|bca|mca|b\.com|m\.com|b\.sc|m\.sc|diploma)\b/i.test(cleanLine) ||
+      /\b(?:degree|university|institute|college|graduated)\b/i.test(cleanLine)
+    ) {
+      const sanitized = sanitizeClaimToEnglish(cleanLine).replace(/\.$/, '');
+      if (sanitized.length > 6 && sanitized.length < 120) {
+        // Try parsing institution if format is "Degree - University (Year)" or "Degree, University"
+        const parts = sanitized.split(/[-–|•,]/).map(p => p.trim()).filter(Boolean);
+        const degree = parts[0] || sanitized;
+        const institution = parts[1] || 'Educational Institution';
+        const yearMatch = sanitized.match(/\b(19\d\d|20\d\d)\b/);
         educationList.push({
-          degree: sanitized,
-          institution: 'Institution',
-          year: ''
+          degree,
+          institution,
+          year: yearMatch ? yearMatch[1] : ''
         });
-        if (educationList.length >= 2) break;
+        if (educationList.length >= 3) break;
       }
     }
   }
 
+  // 8. Extract Real Projects & Work Experience Roles
+  const projectsList: CandidateProfile['projects'] = [];
+  let projIdx = 1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Detect company or role line e.g. "Senior Software Engineer — Nexus Systems (2021 - Present)"
+    if (
+      /(?:engineer|architect|developer|lead|director|manager|specialist|scientist|analyst|intern)\b/i.test(line) &&
+      /[-–—|•,]/.test(line) &&
+      line.length < 120 &&
+      !line.startsWith('•')
+    ) {
+      const parts = line.split(/[-–—|•]/).map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        const role = sanitizeClaimToEnglish(parts[0]).replace(/\.$/, '');
+        const titleWithDates = parts.slice(1).join(' ');
+        const dateMatch = titleWithDates.match(/\(([^)]+)\)|\b(19\d\d|20\d\d(?:\s*-\s*(?:Present|19\d\d|20\d\d))?)\b/i);
+        const duration = dateMatch ? (dateMatch[1] || dateMatch[0]) : '';
+        const title = titleWithDates.replace(/\([^)]+\)/g, '').trim();
+
+        // Collect following bullet points for this role
+        const highlights: string[] = [];
+        for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
+          if (lines[j].startsWith('•') || lines[j].startsWith('-')) {
+            const h = sanitizeClaimToEnglish(lines[j]);
+            if (h) highlights.push(h);
+          } else if (lines[j].length > 0 && /(?:engineer|architect|developer|lead|director|manager)\b/i.test(lines[j]) && /[-–—|•]/.test(lines[j])) {
+            break;
+          }
+        }
+
+        projectsList.push({
+          id: `proj-${projIdx++}`,
+          title: title || role,
+          role,
+          duration,
+          technologies: Array.from(languages).concat(Array.from(frameworks)).slice(0, 5),
+          description: highlights[0] || `${role} role documented on resume.`,
+          highlights
+        });
+
+        if (projectsList.length >= 5) break;
+      }
+    }
+  }
+
+  const uniqueCandId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
   return {
-    id: `cand-${Date.now()}`,
+    id: uniqueCandId,
     name: detectedName,
     title: detectedTitle,
     experienceYears: calculatedYears || 0,
@@ -374,7 +435,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       databases: Array.from(databases),
       toolsAndInfra: Array.from(toolsAndInfra)
     },
-    projects: [],
+    projects: projectsList,
     education: educationList,
     claims: extractedClaims
   };

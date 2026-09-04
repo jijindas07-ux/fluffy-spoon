@@ -17,11 +17,16 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [manualText, setManualText] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadRequestIdRef = useRef<number>(0);
 
   const simulateProcessing = async (profileData: CandidateProfile, fileName?: string) => {
     setIsProcessing(true);
+    setUploadError(null);
     if (fileName) setUploadedFileName(fileName);
+
+    console.log(`[PROFILE] Processing profile: ID=${profileData.id}, Name="${profileData.name}", ClaimsCount=${profileData.claims.length}`);
 
     const stages = [
       'Extracting Document Structure & Typography...',
@@ -36,16 +41,29 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
     }
 
     setIsProcessing(false);
+    console.log(`[UI] Delivering fresh CandidateProfile (${profileData.id}) to application state`);
     onProfileParsed(profileData);
   };
 
   const handleSelectPreset = async (preset: CandidateProfile) => {
-    await simulateProcessing(preset, `${preset.name.replace(/\s+/g, '_')}_Resume.pdf`);
+    setUploadError(null);
+    const freshId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const freshPreset: CandidateProfile = {
+      ...preset,
+      id: freshId,
+      claims: preset.claims.map((c, i) => ({
+        ...c,
+        id: `claim-${i + 1}-${Date.now()}`
+      }))
+    };
+    console.log(`[UPLOAD] Selected preset profile "${preset.name}", generated fresh ID: ${freshId}`);
+    await simulateProcessing(freshPreset, `${preset.name.replace(/\s+/g, '_')}_Resume.pdf`);
   };
 
   const handleFileDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
+    setUploadError(null);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const file = files[0];
@@ -63,7 +81,11 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
   };
 
   const handleFileUpload = async (file: File) => {
+    const requestId = ++uploadRequestIdRef.current;
+    console.log(`[UPLOAD] Received file: "${file.name}" (size: ${file.size} bytes, type: "${file.type}") [Upload #${requestId}]`);
+
     const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+    setUploadError(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -79,20 +101,32 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
         body: formData
       });
       const data = await res.json();
+
+      // Guard against race conditions if another file was dropped in the meantime
+      if (requestId !== uploadRequestIdRef.current) {
+        console.warn(`[UPLOAD RACE GUARD] Ignored stale upload response #${requestId} (current is #${uploadRequestIdRef.current})`);
+        return;
+      }
+
       if (data.success && data.profile) {
+        console.log(`[EXTRACTION] Successfully extracted ${data.textLength || 0} characters, ${data.keyPointsCount || 0} key points, method: ${data.parserSource}`);
+        console.log(`[CLAIMS] Candidate ${data.profile.name} (${data.profile.id}) has ${data.profile.claims?.length || 0} extracted claims`);
         await simulateProcessing(data.profile, file.name);
       } else {
-        const fallbackProfile = extractClaimsFromText(`Resume document for ${cleanName}`, cleanName);
-        await simulateProcessing(fallbackProfile, file.name);
+        setUploadError(data.error || 'This resume could not be reliably read. Please upload a clearer PDF or paste your resume text below.');
+        setShowManualInput(true);
       }
-    } catch {
-      const fallbackProfile = extractClaimsFromText(`Resume document for ${cleanName}`, cleanName);
-      await simulateProcessing(fallbackProfile, file.name);
+    } catch (err: any) {
+      if (requestId !== uploadRequestIdRef.current) return;
+      setUploadError('Failed to parse resume document. Please upload a clearer PDF or paste the text manually.');
+      setShowManualInput(true);
     }
   };
 
   const handleManualSubmit = async () => {
     if (!manualText.trim()) return;
+    const requestId = ++uploadRequestIdRef.current;
+    setUploadError(null);
     try {
       const llmConfig = getSavedLLMConfig();
       const res = await fetch('/api/resume/parse', {
@@ -105,6 +139,8 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
         })
       });
       const data = await res.json();
+      if (requestId !== uploadRequestIdRef.current) return;
+
       if (data.success && data.profile) {
         await simulateProcessing(data.profile, 'Custom_Resume.txt');
       } else {
@@ -112,6 +148,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
         await simulateProcessing(fallbackProfile, 'Custom_Resume.txt');
       }
     } catch {
+      if (requestId !== uploadRequestIdRef.current) return;
       const fallbackProfile = extractClaimsFromText(manualText, 'Candidate');
       await simulateProcessing(fallbackProfile, 'Custom_Resume.txt');
     }
@@ -173,6 +210,41 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
         </div>
       ) : (
         <div>
+          {/* Error Banner if Parsing Fails */}
+          {uploadError && (
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.12)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              borderRadius: '10px',
+              padding: '1rem 1.25rem',
+              marginBottom: '1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              color: '#fca5a5',
+              fontSize: '0.9rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Shield size={18} color="#ef4444" style={{ flexShrink: 0 }} />
+                <span>{uploadError}</span>
+              </div>
+              <button
+                onClick={() => setUploadError(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#f87171',
+                  cursor: 'pointer',
+                  fontSize: '1.1rem',
+                  lineHeight: 1
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Drag and Drop Zone */}
           <div
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
@@ -195,6 +267,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleFileUpload(file);
+                e.target.value = '';
               }}
               accept=".pdf,.docx,.doc,.txt"
               style={{ display: 'none' }}

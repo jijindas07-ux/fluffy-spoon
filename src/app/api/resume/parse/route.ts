@@ -51,12 +51,23 @@ export async function POST(req: NextRequest) {
       const preset = SAMPLE_CANDIDATES.find(c => c.id === presetId);
       profile = preset || SAMPLE_CANDIDATES[0];
     } else {
+      // Validate if we have any usable text or multimodal attachment
+      const hasUsableText = rawText && rawText.trim().length >= 20;
+      const effectiveLLM = LLMService.getEffectiveConfig(clientLLMConfig);
+      const canUseMultimodal = Boolean(pdfBase64 && effectiveLLM && effectiveLLM.provider === 'gemini');
+
+      if (!hasUsableText && !canUseMultimodal) {
+        return NextResponse.json({
+          success: false,
+          error: 'The uploaded resume could not be reliably read (unreadable or scanned without clear text). Please upload a clearer PDF or enter your resume text manually.'
+        }, { status: 422 });
+      }
+
       // Direct PDF Key Point Extraction (100% native, without AI)
       const directKeyPoints = extractKeyPointsFromPdfText(rawText);
 
       // Check if LLM / AI key is configured
-      const effectiveLLM = LLMService.getEffectiveConfig(clientLLMConfig);
-      if (effectiveLLM && (rawText.length > 10 || pdfBase64)) {
+      if (effectiveLLM && (hasUsableText || canUseMultimodal)) {
         try {
           const aiProfile = await LLMService.parseResumeWithLLM(rawText, candidateName, effectiveLLM, pdfBase64);
           if (aiProfile) {
@@ -69,6 +80,12 @@ export async function POST(req: NextRequest) {
 
       // Fallback to intelligent local claim extractor if AI unavailable or returned null
       if (!profile) {
+        if (!hasUsableText) {
+          return NextResponse.json({
+            success: false,
+            error: 'The uploaded resume could not be reliably read. Please upload a clearer text-based PDF or enter your resume text manually.'
+          }, { status: 422 });
+        }
         profile = extractClaimsFromText(rawText || `Resume document for ${candidateName}`, candidateName);
         profile.parserSource = 'direct_pdf_parser';
       }
@@ -89,6 +106,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error parsing resume:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'An error occurred while parsing the resume.' }, { status: 500 });
   }
 }

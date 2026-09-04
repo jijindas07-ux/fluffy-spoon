@@ -139,8 +139,9 @@ Respond ONLY with a valid JSON object matching this schema:
           .filter(Boolean);
 
         if (sanitizedClaims.length > 0) {
+          const uniqueCandId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
           return {
-            id: `cand-${Date.now()}`,
+            id: uniqueCandId,
             name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
             title: parsed.title || 'Professional',
             experienceYears: Number(parsed.experienceYears) || 0,

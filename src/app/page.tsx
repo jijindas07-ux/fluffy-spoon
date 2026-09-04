@@ -39,7 +39,10 @@ export default function Home() {
   };
 
   const handleProfileParsed = (profile: CandidateProfile) => {
+    console.log(`[STATE] New profile loaded: ${profile.id} (${profile.name}). Resetting session & evaluation report.`);
     setCandidateProfile(profile);
+    setInterviewSession(null);
+    setEvaluationReport(null);
     setCurrentStep('profile');
   };
 
@@ -52,6 +55,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       const clientLLMConfig = getStoredLLMConfig();
+      console.log(`[INTERVIEW ENGINE] Starting interview for candidate ${candidateProfile.id} (${candidateProfile.name})`);
       const res = await fetch('/api/interview/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -63,6 +67,7 @@ export default function Home() {
       });
       const data = await res.json();
       if (data.success && data.session) {
+        console.log(`[INTERVIEW ENGINE] Session started: ${data.session.id} for candidate ${data.session.candidate.id}`);
         setInterviewSession(data.session);
         setCurrentStep('interview');
       }
@@ -99,6 +104,7 @@ export default function Home() {
   };
 
   const handleReset = () => {
+    console.log(`[STATE] Global application reset`);
     setCurrentStep('landing');
     setCandidateProfile(null);
     setInterviewSession(null);
@@ -123,6 +129,7 @@ export default function Home() {
 
         {currentStep === 'profile' && candidateProfile && (
           <CandidateProfileView
+            key={candidateProfile.id}
             profile={candidateProfile}
             onProceed={handleProceedToSetup}
             onBack={() => setCurrentStep('upload')}
@@ -131,6 +138,7 @@ export default function Home() {
 
         {currentStep === 'setup' && candidateProfile && (
           <InterviewSetup
+            key={candidateProfile.id}
             profile={candidateProfile}
             onStartInterview={handleStartInterview}
             onBack={() => setCurrentStep('profile')}
@@ -139,6 +147,7 @@ export default function Home() {
 
         {currentStep === 'interview' && interviewSession && (
           <LiveInterview
+            key={interviewSession.id}
             session={interviewSession}
             onComplete={handleCompleteInterview}
           />
@@ -146,6 +155,7 @@ export default function Home() {
 
         {currentStep === 'report' && evaluationReport && (
           <EvaluationReportView
+            key={evaluationReport.id}
             report={evaluationReport}
             onRestart={handleReset}
           />
