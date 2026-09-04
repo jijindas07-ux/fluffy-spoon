@@ -1,5 +1,7 @@
 import { CandidateProfile, ConversationTurn, EvaluationReport, InterviewConfig } from '../types';
 import { DynamicQuestionResult } from '../engine/adaptiveEngine';
+import { sanitizeClaimToEnglish } from '../engine/claimExtractor';
+import { cleanPdfText } from '../engine/pdfParser';
 
 export interface LLMConfig {
   provider: 'gemini' | 'openai' | 'groq' | 'custom' | 'auto';
@@ -55,17 +57,18 @@ export class LLMService {
     pdfBase64?: string
   ): Promise<CandidateProfile | null> {
     const hasPdfAttachment = Boolean(pdfBase64 && llmConfig.provider === 'gemini');
+    const cleanedText = cleanPdfText(rawText || '');
     
     const prompt = `You are a Principal Technical Recruiter and AI Talent Intelligence Engine.
 ${hasPdfAttachment ? 'Thoroughly examine the attached candidate resume document (including header, all work history roles, multi-column sections, technical skills, quantifiable bullet points, and project deliverables).' : 'Thoroughly examine the extracted resume text below.'}
 
-${rawText && rawText.length > 20 ? `RAW RESUME TEXT:
-${rawText.slice(0, 12000)}` : ''}
+${cleanedText && cleanedText.length > 20 ? `RESUME TEXT:
+${cleanedText.slice(0, 12000)}` : ''}
 
-ANALYSIS GOALS:
+ANALYSIS GOALS (ALL IN PLAIN, FLUENT ENGLISH):
 1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name, current/latest Job Title, and calculate total years of professional experience from the dates on the resume.
 2. **Key Roles & Companies**: Identify the candidate's key employment roles, company names, and employment dates.
-3. **Verifiable Claims (CRITICAL: KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Lined up 40+ lateral hiring interviews within 90 days."). NEVER dump multiple sentences, paragraphs, or full summary blocks into a single claim!
+3. **Verifiable Claims (CRITICAL: CLEAN ENGLISH ONLY, KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE ENGLISH SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Lined up 40+ lateral hiring interviews within 90 days."). NEVER dump PDF tags, font bytecode, or multiple sentences into a single claim!
 4. **Metrics & Impact**: Capture the exact metrics, percentages, numbers, volumes, or business outcomes mentioned.
 5. **Categorization**: Categorize each claim naturally (e.g., "Scale & Traffic", "Database & Storage", "Performance & Latency", "Reliability & CI/CD", "Leadership").
 6. **Skills & Tools**: Extract all relevant skills, tools, and platforms explicitly mentioned on the resume.
@@ -85,7 +88,7 @@ Respond ONLY with a valid JSON object matching this schema:
   "claims": [
     {
       "id": "claim-1",
-      "rawClaim": "Single concise sentence under 20 words describing one specific achievement or metric.",
+      "rawClaim": "Single concise English sentence under 20 words describing one specific achievement or metric.",
       "category": "Scale & Traffic",
       "contextProject": "Company or Project Name",
       "claimedMetrics": "Exact metric mentioned (or 'Documented Highlight')",
@@ -118,31 +121,42 @@ Respond ONLY with a valid JSON object matching this schema:
       const responseText = await this.callLLM(prompt, llmConfig, true, inlineData);
       const parsed = this.cleanAndParseJSON(responseText);
       if (parsed && parsed.name && Array.isArray(parsed.claims) && parsed.claims.length > 0) {
-        return {
-          id: `cand-${Date.now()}`,
-          name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
-          title: parsed.title || 'Professional',
-          experienceYears: Number(parsed.experienceYears) || 0,
-          summary: parsed.summary || 'Demonstrated technical and professional experience documented on resume.',
-          skills: {
-            languages: parsed.skills?.languages || [],
-            frameworks: parsed.skills?.frameworks || [],
-            databases: parsed.skills?.databases || [],
-            toolsAndInfra: parsed.skills?.toolsAndInfra || []
-          },
-          projects: parsed.projects || [],
-          education: parsed.education || [],
-          parserSource: hasPdfAttachment ? 'gemini_multimodal' : 'gemini_text',
-          claims: parsed.claims.map((c: any, i: number) => ({
-            id: c.id || `claim-${i + 1}`,
-            rawClaim: c.rawClaim || 'Demonstrated professional accomplishment',
-            category: c.category || 'Architecture',
-            contextProject: c.contextProject || 'Project Experience',
-            claimedMetrics: c.claimedMetrics || 'Documented Highlight',
-            confidenceLevel: c.confidenceLevel || 'High',
-            verificationStatus: 'Pending'
-          }))
-        };
+        // Sanitize all claims to guaranteed clean English
+        const sanitizedClaims = parsed.claims
+          .map((c: any, i: number) => {
+            const cleanClaim = sanitizeClaimToEnglish(c.rawClaim || '');
+            if (!cleanClaim || cleanClaim.length < 15) return null;
+            return {
+              id: c.id || `claim-${i + 1}`,
+              rawClaim: cleanClaim,
+              category: c.category || 'Architecture',
+              contextProject: c.contextProject || 'Project Experience',
+              claimedMetrics: c.claimedMetrics || 'Documented Highlight',
+              confidenceLevel: c.confidenceLevel || 'High',
+              verificationStatus: 'Pending'
+            };
+          })
+          .filter(Boolean);
+
+        if (sanitizedClaims.length > 0) {
+          return {
+            id: `cand-${Date.now()}`,
+            name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
+            title: parsed.title || 'Professional',
+            experienceYears: Number(parsed.experienceYears) || 0,
+            summary: parsed.summary || 'Demonstrated technical and professional experience documented on resume.',
+            skills: {
+              languages: parsed.skills?.languages || [],
+              frameworks: parsed.skills?.frameworks || [],
+              databases: parsed.skills?.databases || [],
+              toolsAndInfra: parsed.skills?.toolsAndInfra || []
+            },
+            projects: parsed.projects || [],
+            education: parsed.education || [],
+            parserSource: hasPdfAttachment ? 'gemini_multimodal' : 'gemini_text',
+            claims: sanitizedClaims
+          };
+        }
       }
     } catch (err) {
       console.warn('LLM resume parsing failed, falling back to local extractor:', err);
@@ -390,7 +404,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
     if (provider === 'gemini') {
       const apiKey = config.apiKey;
       if (!apiKey) throw new Error('Missing Gemini API Key');
-      const modelsToTry = [config.model || 'gemini-3.6-flash', 'gemini-3.6-flash'].filter((v, i, a) => a.indexOf(v) === i);
+      const modelsToTry = [config.model, 'gemini-3.6-flash', 'gemini-flash-latest', 'gemini-3.7-flash'].filter((v, i, a) => v && a.indexOf(v) === i) as string[];
       
       const parts: any[] = [{ text: prompt }];
       if (inlineData) {

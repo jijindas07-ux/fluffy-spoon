@@ -1,26 +1,67 @@
 import zlib from 'zlib';
 
 /**
+ * Remove all internal PDF structural syntax, object dictionaries, indirect references,
+ * coordinates, stream markers, font CMap bytecode, and PostScript operators.
+ */
+export function stripPdfSyntax(raw: string): string {
+  if (!raw) return '';
+  let text = raw
+    // Extract title contents from /Title(text)
+    .replace(/\/Title\s*\(([^)]+)\)/gi, ' $1. ')
+    .replace(/\/Title\s*\/([a-zA-Z0-9_-]+)/gi, ' $1. ')
+    // Strip PDF indirect object references like 36 0 R, 3 0 R
+    .replace(/\b\d+\s+\d+\s+R\b/g, ' ')
+    // Strip PDF coordinates /XYZ 26 642 0, /Fit, etc.
+    .replace(/\/XYZ\s+[\d.-]+\s+[\d.-]+\s+[\d.-]+/gi, ' ')
+    .replace(/\/Fit[BHVRO]?\b[^\s/\]>]*/gi, ' ')
+    // Strip PDF operator dictionaries /Parent ... /Dest ... /Prev ... /Next ...
+    .replace(/\/(?:Parent|Dest|Prev|Next|XYZ|Fit|Page|Catalog|Outlines|Font|ProcSet|MediaBox|Annots|StructTreeRoot|Root|Kids|Count|Resources|Type|Length|Filter|FlateDecode|Group|Tabs|List|ListNumbering|Disc|Circle|Square)[^\s/\]>]*/gi, ' ')
+    // Strip stream ... endstream and leftovers
+    .replace(/stream[\s\S]*?endstream/gi, ' ')
+    .replace(/\bstream\s+[^\r\n]*/gi, ' ')
+    .replace(/<<|>>/g, ' ')
+    .replace(/\[|\]/g, ' ')
+    // Remove PostScript operators (BT, ET, Tf, Tj, TJ, cm, Do, re, RG, rg, etc.) when isolated
+    .replace(/\b(?:BT|ET|Tf|Tj|TJ|cm|Do|re|RG|rg|Td|TD|Tm|T\*)\b/g, ' ')
+    // Clean remaining slashes and special debris
+    .replace(/\\+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text;
+}
+
+/**
  * Checks if a string contains legitimate, human-readable English text rather than
- * font index bytes, escape codes, or binary debris.
+ * font index bytes, escape codes, PostScript commands, or binary debris.
  */
 export function isReadableEnglishText(text: string): boolean {
   if (!text || text.trim().length < 15) return false;
 
+  // Reject PDF dictionary commands and object markers
+  if (/\/(?:Parent|Dest|XYZ|Title|Prev|Next|Font|stream|endobj|endstream|FlateDecode|Catalog|Outlines)\b/i.test(text)) return false;
+  if (/\b\d+\s+\d+\s+R\b/.test(text)) return false;
+  if (/[%@#$^~=><]{2,}/.test(text)) return false;
+
   const clean = text.replace(/\s+/g, ' ').trim();
-  
-  // Reject if it contains excessive backslashes or escape code artifacts
-  const backslashCount = (clean.match(/\\[a-zA-Z0-9]/g) || []).length;
-  if (backslashCount > 2) return false;
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length < 3) return false;
 
-  // Count alphabetic characters
-  const letters = (clean.match(/[a-zA-Z]/g) || []).length;
-  const nonSpace = clean.replace(/\s/g, '').length;
-  if (nonSpace === 0 || letters / nonSpace < 0.55) return false;
+  // Real English word check: normal vowels, clean letters
+  let validWordCount = 0;
+  for (const w of words) {
+    const cleanW = w.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, '');
+    if (cleanW.length >= 2 && /[aeiouyAEIOUY]/.test(cleanW) && /^[a-zA-Z'-]+$/.test(cleanW)) {
+      // Reject words with random mixed casing inside like zQpqdA, wOvBi6, GyutU
+      const internalMixed = /[a-z][A-Z][a-z]/.test(cleanW);
+      if (!internalMixed) {
+        validWordCount++;
+      }
+    }
+  }
 
-  // Check for at least 3 genuine English words (3+ alphabetic chars)
-  const words = clean.split(/\s+/).filter(w => /^[a-zA-Z]{3,}/.test(w));
-  return words.length >= 3;
+  const validRatio = validWordCount / words.length;
+  return validRatio >= 0.65 && validWordCount >= 3;
 }
 
 /**
@@ -31,7 +72,7 @@ export function isReadableEnglishText(text: string): boolean {
 export function cleanPdfText(rawText: string): string {
   if (!rawText) return '';
 
-  let cleaned = rawText
+  let cleaned = stripPdfSyntax(rawText)
     // Remove literal string escapes like \t, \b, \r, \n, \f, \v, \\
     .replace(/\\[tbrnfv\\]/g, ' ')
     // Remove octal string codes like \001\000\002\000\003\000
@@ -195,17 +236,23 @@ function extractTextFromRawPdfBuffer(buffer: Buffer): string {
 
   // Fallback to extracting ASCII string sequences if stream parsing found nothing
   if (textChunks.length === 0) {
-    const asciiRegex = /[A-Za-z0-9\s.,;:()\/\-%#@&$+='"]{4,}/g;
+    const asciiRegex = /[A-Za-z0-9\s.,;:()\/\-%#@&$+='"]{6,}/g;
     let asciiMatch: RegExpExecArray | null;
     while ((asciiMatch = asciiRegex.exec(content)) !== null) {
-      const str = asciiMatch[0].trim();
-      if (!str.includes('obj') && !str.includes('endobj') && !str.includes('Filter') && !str.includes('FlateDecode')) {
-        textChunks.push(str);
+      const rawStr = asciiMatch[0].trim();
+      const stripped = stripPdfSyntax(rawStr);
+      if (
+        stripped.length >= 15 && 
+        isReadableEnglishText(stripped) &&
+        !rawStr.includes('FlateDecode') && 
+        !rawStr.includes('endstream')
+      ) {
+        textChunks.push(stripped);
       }
     }
   }
 
-  return cleanPdfText(textChunks.join(' '));
+  return cleanPdfText(textChunks.join('\n'));
 }
 
 /**
