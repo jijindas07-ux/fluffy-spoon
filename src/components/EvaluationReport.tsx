@@ -114,7 +114,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
             justifyContent: 'center'
           }}>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-              Overall Technical Score
+              Overall Evaluation Score
             </div>
             <div style={{
               fontSize: '3.8rem',
@@ -131,7 +131,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
               {report.overallScore}<span style={{ fontSize: '1.8rem', color: 'var(--text-muted)' }}>/100</span>
             </div>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-faint)' }}>
-              Calibrated against {report.seniority} Engineering Benchmarks
+              Calibrated against {report.seniority} Professional Benchmarks
             </div>
           </div>
         </div>
@@ -271,7 +271,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
         <div className="glass-card" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fda4af', fontWeight: 700, marginBottom: '1rem' }}>
             <AlertTriangle size={18} />
-            <span>Areas for Technical Growth</span>
+            <span>Areas for Professional Growth</span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

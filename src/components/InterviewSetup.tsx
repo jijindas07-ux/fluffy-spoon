@@ -16,31 +16,31 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
     profile.experienceYears >= 8 ? 'Staff / Lead' : profile.experienceYears >= 4 ? 'Senior' : profile.experienceYears >= 2 ? 'Mid-Level' : 'Junior'
   );
   const [durationMinutes, setDurationMinutes] = useState<number>(15);
-  const [focusArea, setFocusArea] = useState<InterviewFocus>('Deep Technical Verification');
+  const [focusArea, setFocusArea] = useState<InterviewFocus>('Core Competencies & Claim Verification');
   const [rigorLevel, setRigorLevel] = useState<RigorLevel>('Rigorous & Challenging');
 
   const seniorityOptions: SeniorityLevel[] = [
-    'Junior', 'Mid-Level', 'Senior', 'Staff / Lead', 'Principal / Architect'
+    'Junior', 'Mid-Level', 'Senior', 'Staff / Lead', 'Principal / Architect', 'Executive / Director'
   ];
 
   const durationOptions = [
     { mins: 5, label: '5 Min Drill', desc: '4 adaptive turns • Quick claim verification' },
-    { mins: 15, label: '15 Min Standard', desc: '7 adaptive turns • Deep architecture probe' },
-    { mins: 30, label: '30 Min Comprehensive', desc: '10 adaptive turns • Full system stress test' }
+    { mins: 15, label: '15 Min Standard', desc: '7 adaptive turns • Deep competency probe' },
+    { mins: 30, label: '30 Min Comprehensive', desc: '10 adaptive turns • Full professional assessment' }
   ];
 
   const focusOptions: { title: InterviewFocus; desc: string }[] = [
-    { title: 'System Architecture & Scale', desc: 'Probes high concurrency, caching, data modeling, and bottlenecks' },
-    { title: 'Deep Technical Verification', desc: 'Validates authenticity of exact resume claims and tech stack choices' },
-    { title: 'Problem Solving & Trade-offs', desc: 'Investigates engineering decision matrices and alternatives considered' },
-    { title: 'Full-Stack Engineering', desc: 'Evaluates end-to-end frontend performance and backend contracts' },
-    { title: 'Practical Debugging & Reliability', desc: 'Probes production incident response, metrics, and failover' }
+    { title: 'Core Competencies & Claim Verification', desc: 'Validates authenticity of documented achievements, skills, and outcomes' },
+    { title: 'Problem Solving & Strategic Decisions', desc: 'Investigates decision-making logic, alternatives considered, and professional rationale' },
+    { title: 'Process, Operations & Execution', desc: 'Evaluates end-to-end workflows, execution discipline, and project delivery' },
+    { title: 'Leadership & Stakeholder Management', desc: 'Probes cross-functional leadership, negotiation, alignment, and team direction' },
+    { title: 'Domain Expertise & Scenario Handling', desc: 'Tests deep subject-matter knowledge, industry standards, and hands-on scenarios' }
   ];
 
   const rigorOptions: { title: RigorLevel; desc: string; badge: string }[] = [
-    { title: 'Constructive & Thorough', desc: 'Supportive tone, asks guided follow-ups to extract depth', badge: 'badge-emerald' },
-    { title: 'Rigorous & Challenging', desc: 'Directly challenges assumptions, explores edge cases and scale limits', badge: 'badge-indigo' },
-    { title: 'High-Bar FAANG Style', desc: 'Intensive stress testing on scalability, race conditions, and tradeoffs', badge: 'badge-rose' }
+    { title: 'Constructive & Thorough', desc: 'Supportive tone, asks guided follow-ups to extract professional depth', badge: 'badge-emerald' },
+    { title: 'Rigorous & Challenging', desc: 'Directly challenges assumptions, explores edge cases and operational limits', badge: 'badge-indigo' },
+    { title: 'High-Bar Executive Standard', desc: 'Intensive evaluation of strategic judgment, measurable impact, and accountability', badge: 'badge-rose' }
   ];
 
   const handleSubmit = (e: React.FormEvent) => {

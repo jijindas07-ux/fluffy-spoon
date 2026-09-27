@@ -1,11 +1,36 @@
-export type SeniorityLevel = 'Junior' | 'Mid-Level' | 'Senior' | 'Staff / Lead' | 'Principal / Architect';
-export type InterviewFocus = 'System Architecture & Scale' | 'Deep Technical Verification' | 'Problem Solving & Trade-offs' | 'Full-Stack Engineering' | 'Practical Debugging & Reliability';
-export type RigorLevel = 'Constructive & Thorough' | 'Rigorous & Challenging' | 'High-Bar FAANG Style';
+export type SeniorityLevel = 'Junior' | 'Mid-Level' | 'Senior' | 'Staff / Lead' | 'Principal / Architect' | 'Executive / Director';
+export type InterviewFocus = 
+  | 'Core Competencies & Claim Verification'
+  | 'Problem Solving & Strategic Decisions'
+  | 'Process, Operations & Execution'
+  | 'Leadership & Stakeholder Management'
+  | 'Domain Expertise & Scenario Handling'
+  // Legacy / Technical focuses supported for backwards compatibility
+  | 'System Architecture & Scale'
+  | 'Deep Technical Verification'
+  | 'Problem Solving & Trade-offs'
+  | 'Full-Stack Engineering'
+  | 'Practical Debugging & Reliability';
+
+export type RigorLevel = 'Constructive & Thorough' | 'Rigorous & Challenging' | 'High-Bar Executive Standard' | 'High-Bar FAANG Style';
+
+export type ClaimCategory = 
+  | 'Impact & Results'
+  | 'Leadership & Management'
+  | 'Process & Operations'
+  | 'Domain Expertise'
+  | 'Strategy & Planning'
+  | 'Scale & Systems'
+  | 'Scale & Traffic'
+  | 'Architecture'
+  | 'Performance & Latency'
+  | 'Database & Storage'
+  | 'Reliability & CI/CD';
 
 export interface ResumeClaim {
   id: string;
   rawClaim: string;
-  category: 'Scale & Traffic' | 'Architecture' | 'Performance & Latency' | 'Database & Storage' | 'Reliability & CI/CD' | 'Leadership';
+  category: ClaimCategory | string;
   contextProject: string;
   claimedMetrics: string;
   confidenceLevel: 'High' | 'Medium' | 'Needs Deep-Dive';
@@ -97,7 +122,8 @@ export interface EvaluationReport {
   recommendation: 'Strong Hire' | 'Hire' | 'Leaning Hire' | 'Needs Follow-Up' | 'Do Not Hire';
   executiveSummary: string;
   dimensions: {
-    technicalCompetency: EvaluationDimension;
+    technicalCompetency: EvaluationDimension; // Label defaults to 'Role & Domain Competency'
+    roleCompetency?: EvaluationDimension;
     problemSolving: EvaluationDimension;
     communication: EvaluationDimension;
     experienceDepth: EvaluationDimension;

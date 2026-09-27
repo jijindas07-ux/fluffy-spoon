@@ -8,21 +8,21 @@ export const HowItWorks: React.FC = () => {
     {
       step: '01',
       title: 'Resume Claim Parsing & Entity Graph',
-      description: 'The engine parses candidate resumes to extract verifiable assertions, scale claims (e.g. 100k users), architectural choices, and latency numbers rather than simple keyword counts.',
+      description: 'The engine parses candidate resumes to extract verifiable assertions, quantifiable impact metrics, strategic initiatives, and role-specific achievements rather than simple keyword counts.',
       icon: FileSearch,
       accent: 'var(--primary)'
     },
     {
       step: '02',
       title: 'Adaptive Multi-Turn Investigation',
-      description: 'Zero static scripts. The AI anchors on a claim, inquires about candidate ownership, and analyzes answers to generate deep follow-ups probing databases, concurrency, and trade-offs.',
+      description: 'Zero static scripts. The AI anchors on a claim, inquires about candidate ownership, and analyzes answers to generate deep follow-ups probing methodologies, decision rationales, and execution trade-offs.',
       icon: GitBranch,
       accent: 'var(--accent-cyan)'
     },
     {
       step: '03',
       title: 'Evidence-Based Credibility Report',
-      description: 'After the session, the AI outputs an evaluation grading technical depth and resume credibility—citing exact candidate quotes as evidence behind every score.',
+      description: 'After the session, the AI outputs an evaluation grading role competency and resume credibility—citing exact candidate quotes as evidence behind every score.',
       icon: Award,
       accent: 'var(--accent-emerald)'
     }
@@ -126,8 +126,8 @@ export const HowItWorks: React.FC = () => {
             </div>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem', color: 'var(--text-main)' }}>
               <li>✅ Dynamic multi-turn follow-ups targeting exact candidate answers</li>
-              <li>✅ Direct claim anchoring (e.g. 100k users, Redis cache, Kafka)</li>
-              <li>✅ Probes architectural trade-offs, scaling limits & failure modes</li>
+              <li>✅ Direct claim anchoring from any field — Finance, HR, Marketing, Healthcare, Tech</li>
+              <li>✅ Probes decisions, trade-offs, real execution, and measurable outcomes</li>
               <li>✅ Complete audit report with verbatim candidate citations</li>
             </ul>
           </div>

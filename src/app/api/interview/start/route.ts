@@ -2,15 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAIService } from '@/lib/services/aiService';
 import { memoryStore } from '@/lib/db/client';
 import { ConversationTurn, InterviewSession } from '@/lib/types';
+import { validateToken, extractTokenFromRequest } from '@/lib/auth/authUtils';
+import { authStore } from '@/lib/auth/authStore';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { candidateId, candidateProfile, config, clientLLMConfig } = body;
+    const { candidateId, candidateProfile, config, clientLLMConfig, userId: bodyUserId } = body;
+
+    // Extract auth token to get userId (optional - support unauthenticated use too)
+    const token = extractTokenFromRequest(req);
+    const auth = token ? validateToken(token) : null;
+    const userId = auth?.userId || bodyUserId || null;
 
     let candidate = candidateProfile;
     if (!candidate && candidateId) {
-      candidate = await memoryStore.getCandidate(candidateId);
+      candidate = await memoryStore.getCandidate(candidateId, userId || undefined);
     }
 
     if (!candidate) {
@@ -59,7 +66,15 @@ export async function POST(req: NextRequest) {
       startedAt: Date.now()
     };
 
-    await memoryStore.saveSession(session);
+    await memoryStore.saveSession(session, userId || undefined);
+
+    // Track interview count for authenticated users
+    if (userId) {
+      const user = authStore.getUserById(userId);
+      if (user) {
+        authStore.updateUser(userId, { interviewCount: user.interviewCount + 1 });
+      }
+    }
 
     return NextResponse.json({
       success: true,

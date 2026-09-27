@@ -312,9 +312,9 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
           {((profile.skills?.languages?.length || 0) > 0 || (profile.skills?.frameworks?.length || 0) > 0) && (
             <div className="glass-card" style={{ padding: '1.35rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-                <Code size={16} color="var(--primary-light)" />
+                <Sparkles size={16} color="var(--primary-light)" />
                 <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
-                  Languages & Frameworks
+                  Core Competencies & Skills
                 </h5>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
@@ -339,7 +339,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
                 <Database size={16} color="var(--accent-cyan)" />
                 <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
-                  Databases & Infrastructure
+                  Tools, Platforms & Systems
                 </h5>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
@@ -367,7 +367,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <Briefcase size={16} color="#818cf8" />
             <h5 style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
-              Extracted Project Experience
+              Work Experience & Key Initiatives
             </h5>
           </div>
 

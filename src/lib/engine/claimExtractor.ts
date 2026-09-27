@@ -1,4 +1,4 @@
-import { CandidateProfile, ResumeClaim } from '../types';
+import type { CandidateProfile, ResumeClaim } from '../types';
 import { cleanPdfText, isReadableEnglishText, stripPdfSyntax } from './pdfParser';
 
 /**
@@ -78,32 +78,170 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     detectedName = 'Candidate';
   }
 
-  // 2. Detect Real Job Title from Resume
+  // 2. Detect Real Job Title from Resume dynamically across all industries
   let detectedTitle = '';
-  for (const line of lines.slice(0, 10)) {
+  const titleKeywordsRegex = /\b(accountant|auditor|controller|treasurer|actuary|underwriter|banker|trader|bookkeeper|financial analyst|finance manager|finance director|recruiter|talent acquisition|sourcer|generalist|hrbp|hr manager|hr director|human resources|marketer|marketing specialist|marketing manager|marketing director|copywriter|content strategist|brand manager|seo specialist|account executive|sales representative|sales manager|sales director|business development|nurse|registered nurse|physician|doctor|therapist|pharmacist|clinician|dentist|paramedic|counsel|attorney|lawyer|paralegal|compliance officer|legal advisor|teacher|educator|professor|instructor|lecturer|tutor|principal|dean|operations manager|supply chain|logistics|buyer|procurement|project manager|program manager|product manager|scrum master|designer|art director|engineer|developer|architect|programmer|scientist|administrator|coordinator|specialist|consultant|officer|executive|lead|director|manager)\b/i;
+
+  // Scan top lines for authentic role title
+  for (const line of lines.slice(0, 15)) {
     if (
-      /engineer|developer|architect|lead|manager|consultant|programmer|analyst|designer|specialist|officer|scientist|administrator|coordinator/i.test(line) && 
-      line.length < 60 &&
-      !/experience|summary|skills|education|profile/i.test(line.replace(/engineer|developer/i, ''))
+      titleKeywordsRegex.test(line) && 
+      line.length < 75 &&
+      !/experience|summary|skills|education|profile|curriculum|contact|email|phone|linkedin|github/i.test(line.replace(titleKeywordsRegex, ''))
     ) {
-      const cleanTitle = line.split(/[-–|•,]/)[0].trim();
+      const cleanTitle = line.split(/[-–—|•,]/)[0].trim();
       if (cleanTitle.length > 3) {
         detectedTitle = sanitizeClaimToEnglish(cleanTitle).replace(/\.$/, '');
         break;
       }
     }
   }
+
+  // If still not detected, scan for the first role entry under employment history
   if (!detectedTitle) {
-    detectedTitle = 'Software Engineer';
+    for (const line of lines) {
+      if (
+        titleKeywordsRegex.test(line) &&
+        /[-–—|•:]/.test(line) &&
+        line.length < 80 &&
+        !line.startsWith('•') &&
+        !line.startsWith('-')
+      ) {
+        const parts = line.split(/[-–—|•:]/).map(p => p.trim()).filter(Boolean);
+        const candidatePart = parts.find(p => titleKeywordsRegex.test(p) && p.length < 50);
+        if (candidatePart) {
+          detectedTitle = sanitizeClaimToEnglish(candidatePart).replace(/\.$/, '');
+          break;
+        }
+      }
+    }
   }
 
-  // 3. Extract Real Skills dynamically present in resume text
-  const languages: Set<string> = new Set();
-  const frameworks: Set<string> = new Set();
-  const databases: Set<string> = new Set();
-  const toolsAndInfra: Set<string> = new Set();
+  // Universal neutral fallback - NEVER hardcode to IT or Software Engineer
+  if (!detectedTitle) {
+    detectedTitle = 'Professional Candidate';
+  }
 
-  const techMap: Record<string, { set: Set<string>; canonical: string }> = {
+  // 3. Extract Real Skills dynamically across industries (Finance, HR, Marketing, Sales, Healthcare, Legal, Education, IT, etc.)
+  const languages: Set<string> = new Set(); // Core Competencies & Primary Disciplines
+  const frameworks: Set<string> = new Set(); // Methodologies, Frameworks & Standards
+  const databases: Set<string> = new Set(); // Systems of Record, ATS, CRM, ERP, Databases
+  const toolsAndInfra: Set<string> = new Set(); // Tools, Platforms & Software
+
+  const skillsMap: Record<string, { set: Set<string>; canonical: string }> = {
+    // --- Finance, Accounting & Banking ---
+    'financial modeling': { set: languages, canonical: 'Financial Modeling' },
+    'financial analysis': { set: languages, canonical: 'Financial Analysis' },
+    'budgeting': { set: languages, canonical: 'Budgeting & Forecasting' },
+    'forecasting': { set: languages, canonical: 'Budgeting & Forecasting' },
+    'variance analysis': { set: frameworks, canonical: 'Variance Analysis' },
+    'gaap': { set: frameworks, canonical: 'GAAP' },
+    'ifrs': { set: frameworks, canonical: 'IFRS' },
+    'internal controls': { set: frameworks, canonical: 'Internal Controls' },
+    'sox': { set: frameworks, canonical: 'SOX Compliance' },
+    'risk management': { set: frameworks, canonical: 'Risk Management' },
+    'tax accounting': { set: languages, canonical: 'Tax Accounting' },
+    'auditing': { set: languages, canonical: 'Financial Auditing' },
+    'cash flow': { set: frameworks, canonical: 'Cash Flow Management' },
+    'p&l': { set: frameworks, canonical: 'P&L Management' },
+    'sap': { set: databases, canonical: 'SAP ERP' },
+    'oracle financials': { set: databases, canonical: 'Oracle Financials' },
+    'netsuite': { set: databases, canonical: 'NetSuite' },
+    'quickbooks': { set: databases, canonical: 'QuickBooks' },
+    'xero': { set: databases, canonical: 'Xero' },
+    'hyperion': { set: databases, canonical: 'Hyperion' },
+    'excel': { set: toolsAndInfra, canonical: 'Microsoft Excel' },
+    'power bi': { set: toolsAndInfra, canonical: 'Power BI' },
+    'tableau': { set: toolsAndInfra, canonical: 'Tableau' },
+    'bloomberg': { set: toolsAndInfra, canonical: 'Bloomberg Terminal' },
+
+    // --- Human Resources, Recruiting & Talent Acquisition ---
+    'talent acquisition': { set: languages, canonical: 'Talent Acquisition' },
+    'recruitment': { set: languages, canonical: 'Full-Cycle Recruitment' },
+    'sourcing': { set: frameworks, canonical: 'Candidate Sourcing' },
+    'employee relations': { set: languages, canonical: 'Employee Relations' },
+    'onboarding': { set: frameworks, canonical: 'Employee Onboarding' },
+    'performance management': { set: frameworks, canonical: 'Performance Management' },
+    'compensation': { set: languages, canonical: 'Compensation & Benefits' },
+    'campus hiring': { set: frameworks, canonical: 'Campus Hiring' },
+    'lateral hiring': { set: frameworks, canonical: 'Lateral Recruitment' },
+    'boolean search': { set: frameworks, canonical: 'Boolean Search' },
+    'hr policies': { set: frameworks, canonical: 'HR Policy Development' },
+    'workday': { set: databases, canonical: 'Workday HRIS' },
+    'bamboohr': { set: databases, canonical: 'BambooHR' },
+    'greenhouse': { set: databases, canonical: 'Greenhouse ATS' },
+    'lever': { set: databases, canonical: 'Lever ATS' },
+    'workable': { set: databases, canonical: 'Workable ATS' },
+    'adp': { set: databases, canonical: 'ADP' },
+    'hris': { set: databases, canonical: 'HRIS Management' },
+    'ats': { set: databases, canonical: 'ATS Management' },
+    'linkedin recruiter': { set: toolsAndInfra, canonical: 'LinkedIn Recruiter' },
+    'linkedin': { set: toolsAndInfra, canonical: 'LinkedIn Recruiter' },
+    'naukri': { set: toolsAndInfra, canonical: 'Naukri' },
+    'indeed': { set: toolsAndInfra, canonical: 'Indeed' },
+
+    // --- Marketing, Branding & Growth ---
+    'digital marketing': { set: languages, canonical: 'Digital Marketing' },
+    'brand strategy': { set: languages, canonical: 'Brand Strategy' },
+    'content strategy': { set: languages, canonical: 'Content Strategy' },
+    'seo': { set: frameworks, canonical: 'Search Engine Optimization (SEO)' },
+    'sem': { set: frameworks, canonical: 'Search Engine Marketing (SEM)' },
+    'email marketing': { set: frameworks, canonical: 'Email Marketing' },
+    'market research': { set: frameworks, canonical: 'Market Research' },
+    'copywriting': { set: languages, canonical: 'Copywriting' },
+    'social media': { set: frameworks, canonical: 'Social Media Strategy' },
+    'google analytics': { set: toolsAndInfra, canonical: 'Google Analytics' },
+    'hubspot': { set: databases, canonical: 'HubSpot' },
+    'salesforce': { set: databases, canonical: 'Salesforce CRM' },
+    'mailchimp': { set: toolsAndInfra, canonical: 'Mailchimp' },
+    'semrush': { set: toolsAndInfra, canonical: 'SEMrush' },
+    'meta ads': { set: toolsAndInfra, canonical: 'Meta Ads Manager' },
+    'google ads': { set: toolsAndInfra, canonical: 'Google Ads' },
+
+    // --- Sales & Business Development ---
+    'b2b sales': { set: languages, canonical: 'B2B Sales' },
+    'account management': { set: languages, canonical: 'Account Management' },
+    'lead generation': { set: frameworks, canonical: 'Lead Generation' },
+    'pipeline management': { set: frameworks, canonical: 'Pipeline Management' },
+    'contract negotiation': { set: frameworks, canonical: 'Contract Negotiation' },
+    'client relations': { set: languages, canonical: 'Client Relationship Management' },
+    'crm': { set: databases, canonical: 'CRM Management' },
+
+    // --- Healthcare, Nursing & Clinical ---
+    'patient care': { set: languages, canonical: 'Patient Care' },
+    'clinical assessment': { set: languages, canonical: 'Clinical Assessment' },
+    'triage': { set: frameworks, canonical: 'Triage Procedures' },
+    'medication administration': { set: frameworks, canonical: 'Medication Administration' },
+    'hipaa': { set: frameworks, canonical: 'HIPAA Compliance' },
+    'bls': { set: frameworks, canonical: 'BLS Certification' },
+    'acls': { set: frameworks, canonical: 'ACLS Certification' },
+    'infection control': { set: frameworks, canonical: 'Infection Control' },
+    'epic': { set: databases, canonical: 'Epic EHR' },
+    'cerner': { set: databases, canonical: 'Cerner EMR' },
+    'ehr': { set: databases, canonical: 'EHR Documentation' },
+    'emr': { set: databases, canonical: 'EMR Systems' },
+
+    // --- Legal & Compliance ---
+    'contract drafting': { set: languages, canonical: 'Contract Drafting' },
+    'legal research': { set: languages, canonical: 'Legal Research' },
+    'due diligence': { set: frameworks, canonical: 'Due Diligence' },
+    'regulatory compliance': { set: frameworks, canonical: 'Regulatory Compliance' },
+    'corporate governance': { set: frameworks, canonical: 'Corporate Governance' },
+    'litigation': { set: languages, canonical: 'Litigation Support' },
+    'westlaw': { set: toolsAndInfra, canonical: 'Westlaw' },
+    'lexisnexis': { set: toolsAndInfra, canonical: 'LexisNexis' },
+
+    // --- Education & Academia ---
+    'curriculum development': { set: languages, canonical: 'Curriculum Development' },
+    'lesson planning': { set: frameworks, canonical: 'Lesson Planning' },
+    'classroom management': { set: frameworks, canonical: 'Classroom Management' },
+    'student assessment': { set: frameworks, canonical: 'Student Assessment' },
+    'differentiated instruction': { set: frameworks, canonical: 'Differentiated Instruction' },
+    'pedagogy': { set: languages, canonical: 'Pedagogical Methodology' },
+    'canvas': { set: databases, canonical: 'Canvas LMS' },
+    'blackboard': { set: databases, canonical: 'Blackboard LMS' },
+
+    // --- Information Technology & Software (Equal Citizen) ---
     'typescript': { set: languages, canonical: 'TypeScript' },
     'javascript': { set: languages, canonical: 'JavaScript' },
     'python': { set: languages, canonical: 'Python' },
@@ -115,80 +253,61 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     'rust': { set: languages, canonical: 'Rust' },
     'php': { set: languages, canonical: 'PHP' },
     'ruby': { set: languages, canonical: 'Ruby' },
-    'swift': { set: languages, canonical: 'Swift' },
-    'kotlin': { set: languages, canonical: 'Kotlin' },
     'sql': { set: languages, canonical: 'SQL' },
-    'html': { set: languages, canonical: 'HTML5' },
-    'css': { set: languages, canonical: 'CSS3' },
-    
     'react': { set: frameworks, canonical: 'React' },
-    'react native': { set: frameworks, canonical: 'React Native' },
-    'next.js': { set: frameworks, canonical: 'Next.js' },
-    'nextjs': { set: frameworks, canonical: 'Next.js' },
-    'vue': { set: frameworks, canonical: 'Vue.js' },
-    'angular': { set: frameworks, canonical: 'Angular' },
     'node.js': { set: frameworks, canonical: 'Node.js' },
     'nodejs': { set: frameworks, canonical: 'Node.js' },
-    'express': { set: frameworks, canonical: 'Express' },
+    'next.js': { set: frameworks, canonical: 'Next.js' },
+    'nextjs': { set: frameworks, canonical: 'Next.js' },
+    'angular': { set: frameworks, canonical: 'Angular' },
+    'vue': { set: frameworks, canonical: 'Vue.js' },
     'fastapi': { set: frameworks, canonical: 'FastAPI' },
-    'spring': { set: frameworks, canonical: 'Spring Boot' },
     'spring boot': { set: frameworks, canonical: 'Spring Boot' },
-    'django': { set: frameworks, canonical: 'Django' },
-    'flask': { set: frameworks, canonical: 'Flask' },
-    'tailwind': { set: frameworks, canonical: 'TailwindCSS' },
-
     'postgres': { set: databases, canonical: 'PostgreSQL' },
     'postgresql': { set: databases, canonical: 'PostgreSQL' },
     'redis': { set: databases, canonical: 'Redis' },
     'mongodb': { set: databases, canonical: 'MongoDB' },
     'mysql': { set: databases, canonical: 'MySQL' },
-    'dynamodb': { set: databases, canonical: 'DynamoDB' },
-    'cassandra': { set: databases, canonical: 'Cassandra' },
-    'elasticsearch': { set: databases, canonical: 'Elasticsearch' },
-    'sqlite': { set: databases, canonical: 'SQLite' },
-    'oracle': { set: databases, canonical: 'Oracle' },
-    'kafka': { set: databases, canonical: 'Kafka' },
-    'rabbitmq': { set: databases, canonical: 'RabbitMQ' },
-
     'docker': { set: toolsAndInfra, canonical: 'Docker' },
     'kubernetes': { set: toolsAndInfra, canonical: 'Kubernetes' },
-    'k8s': { set: toolsAndInfra, canonical: 'Kubernetes' },
     'aws': { set: toolsAndInfra, canonical: 'AWS' },
     'gcp': { set: toolsAndInfra, canonical: 'GCP' },
     'azure': { set: toolsAndInfra, canonical: 'Azure' },
-    'ci/cd': { set: toolsAndInfra, canonical: 'CI/CD' },
-    'git': { set: toolsAndInfra, canonical: 'Git' },
-    'github': { set: toolsAndInfra, canonical: 'GitHub' },
-    'terraform': { set: toolsAndInfra, canonical: 'Terraform' },
-    'linux': { set: toolsAndInfra, canonical: 'Linux' },
-    'graphql': { set: toolsAndInfra, canonical: 'GraphQL' },
-
-    // Recruiting, HR, ATS & Operations Tools
-    'workable': { set: toolsAndInfra, canonical: 'Workable ATS' },
-    'bamboohr': { set: toolsAndInfra, canonical: 'BambooHR' },
-    'ibridge': { set: toolsAndInfra, canonical: 'iBridge' },
-    'linkedin': { set: toolsAndInfra, canonical: 'LinkedIn Recruiter' },
-    'naukri': { set: toolsAndInfra, canonical: 'Naukri' },
-    'indeed': { set: toolsAndInfra, canonical: 'Indeed' },
-    'greenhouse': { set: toolsAndInfra, canonical: 'Greenhouse' },
-    'lever': { set: toolsAndInfra, canonical: 'Lever' },
-    'workday': { set: toolsAndInfra, canonical: 'Workday' },
-    'outlook': { set: toolsAndInfra, canonical: 'Microsoft Outlook' },
-    'jira': { set: toolsAndInfra, canonical: 'Jira' },
-    'ats': { set: frameworks, canonical: 'ATS Management' },
-    'hris': { set: frameworks, canonical: 'HRIS' },
-    'talent acquisition': { set: frameworks, canonical: 'Talent Acquisition' },
-    'campus hiring': { set: frameworks, canonical: 'Campus Hiring' },
-    'lateral hiring': { set: frameworks, canonical: 'Lateral Recruitment' },
-    'boolean search': { set: frameworks, canonical: 'Boolean Search' }
+    'git': { set: toolsAndInfra, canonical: 'Git' }
   };
 
+  // Match keyword dictionary
   for (const line of lines) {
     const l = line.toLowerCase();
-    for (const [key, meta] of Object.entries(techMap)) {
+    for (const [key, meta] of Object.entries(skillsMap)) {
       const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       if (new RegExp(`(?:^|[^a-zA-Z0-9_])${escapedKey}(?:$|[^a-zA-Z0-9_])`, 'i').test(l)) {
         meta.set.add(meta.canonical);
+      }
+    }
+  }
+
+  // Dynamic Skill Extraction from Skills / Competencies / Expertise Sections
+  const skillSectionIndex = lines.findIndex(l => 
+    /^(?:skills|key skills|core competencies|competencies|areas of expertise|technical skills|tools & technologies|tools & platforms)\b/i.test(l.trim())
+  );
+  if (skillSectionIndex !== -1 && lines.length > skillSectionIndex + 1) {
+    for (let sIdx = skillSectionIndex + 1; sIdx < Math.min(lines.length, skillSectionIndex + 6); sIdx++) {
+      const sLine = lines[sIdx].trim();
+      if (/^(?:experience|work|employment|education|certifications|projects|summary)\b/i.test(sLine)) break;
+      // Extract comma, bullet, or pipe delimited skills
+      const parsedItems = sLine
+        .replace(/^[•\-\*\+:]\s*/, '')
+        .split(/[,|•;]|\s{3,}/)
+        .map(item => item.trim())
+        .filter(item => item.length >= 2 && item.length <= 40 && !item.includes('@') && !item.includes('http'));
+      
+      for (const item of parsedItems) {
+        if (languages.size < 12) {
+          languages.add(item);
+        } else if (frameworks.size < 12) {
+          frameworks.add(item);
+        }
       }
     }
   }
@@ -271,19 +390,19 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       const match = sanitized.match(metricsRegex);
       const metrics = match ? match[0] : 'Documented Highlight';
 
-      let category: ResumeClaim['category'] = 'Architecture';
-      if (/user|traffic|scale|load|million|billion|concurrent|throughput|volume|campus|lateral|hiring|interviews|applications|candidates|requisitions/i.test(sanitized)) {
-        category = 'Scale & Traffic';
-      } else if (/database|sql|postgres|redis|mongo|storage|cache|kafka|query|data|ats|profiles|pipeline|crm|hris/i.test(sanitized)) {
-        category = 'Database & Storage';
-      } else if (/latency|p95|p99|speed|ms|fast|throughput|optimized|performance|response time|cost|reduction|turnaround|sla/i.test(sanitized)) {
-        category = 'Performance & Latency';
-      } else if (/uptime|resilient|ci\/cd|kubernetes|docker|deploy|aws|cloud|monitoring|security|onboarding|operations|verification/i.test(sanitized)) {
-        category = 'Reliability & CI/CD';
-      } else if (/lead|managed|team|mentored|spearheaded|directed|coordinated|hired|partner|stakeholder/i.test(sanitized)) {
-        category = 'Leadership';
+      let category: ResumeClaim['category'] = 'Domain Expertise';
+      if (/lead|managed|team|mentored|spearheaded|directed|coordinated|hired|partnered|stakeholder|supervised|headed|negotiated/i.test(sanitized)) {
+        category = 'Leadership & Management';
+      } else if (/\$|revenue|budget|margin|roi|sales|growth|profit|saving|cost reduction|decreased|increased|boosted|generated|closed|conversion|p&l/i.test(sanitized)) {
+        category = 'Impact & Results';
+      } else if (/process|workflow|compliance|audit|policy|onboarding|sla|turnaround|standardized|quality|operations|retention|clinical|triage|curriculum/i.test(sanitized)) {
+        category = 'Process & Operations';
+      } else if (/strategy|roadmap|market|expansion|initiative|forecast|planned|vision|research|branding/i.test(sanitized)) {
+        category = 'Strategy & Planning';
+      } else if (/scale|traffic|concurrent|million|billion|database|system|infrastructure|platform|pipeline|architecture|load|throughput|erp|crm/i.test(sanitized)) {
+        category = 'Scale & Systems';
       } else {
-        category = 'Architecture';
+        category = 'Domain Expertise';
       }
 
       const lowerKey = sanitized.toLowerCase().slice(0, 40);
@@ -293,7 +412,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
           id: `claim-${claimIdx++}`,
           rawClaim: sanitized,
           category,
-          contextProject: 'Resume Experience',
+          contextProject: 'Documented Experience',
           claimedMetrics: metrics,
           confidenceLevel: sanitized.length > 40 ? 'High' : 'Needs Deep-Dive',
           verificationStatus: 'Pending'
@@ -320,7 +439,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
         extractedClaims.push({
           id: `claim-${claimIdx++}`,
           rawClaim: cleanLine,
-          category: 'Architecture',
+          category: 'Domain Expertise',
           contextProject: 'Documented Experience',
           claimedMetrics: 'Documented Highlight',
           confidenceLevel: 'Medium',
@@ -355,12 +474,11 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       continue;
     }
     if (
-      /\b(?:bachelor|master|phd|b\.s|m\.s|b\.e|b\.tech|m\.tech|mba|bba|bca|mca|b\.com|m\.com|b\.sc|m\.sc|diploma)\b/i.test(cleanLine) ||
+      /\b(?:bachelor|master|phd|b\.s|m\.s|b\.e|b\.tech|m\.tech|mba|bba|bca|mca|b\.com|m\.com|b\.sc|m\.sc|bsn|msn|rn|jd|llb|llm|diploma)\b/i.test(cleanLine) ||
       /\b(?:degree|university|institute|college|graduated)\b/i.test(cleanLine)
     ) {
       const sanitized = sanitizeClaimToEnglish(cleanLine).replace(/\.$/, '');
       if (sanitized.length > 6 && sanitized.length < 120) {
-        // Try parsing institution if format is "Degree - University (Year)" or "Degree, University"
         const parts = sanitized.split(/[-–|•,]/).map(p => p.trim()).filter(Boolean);
         const degree = parts[0] || sanitized;
         const institution = parts[1] || 'Educational Institution';
@@ -375,19 +493,25 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     }
   }
 
-  // 8. Extract Real Projects & Work Experience Roles
+  // 8. Extract Real Work Experience Roles across all industries
   const projectsList: CandidateProfile['projects'] = [];
   let projIdx = 1;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    // Detect company or role line e.g. "Senior Software Engineer — Nexus Systems (2021 - Present)"
+    const hasRoleKeyword = titleKeywordsRegex.test(line);
+    const hasSeparator = /[-–—|•:]/.test(line);
+    const hasDate = /\b(19\d\d|20\d\d|present)\b/i.test(line);
+
+    // Detect company or role line across any profession
     if (
-      /(?:engineer|architect|developer|lead|director|manager|specialist|scientist|analyst|intern)\b/i.test(line) &&
-      /[-–—|•,]/.test(line) &&
-      line.length < 120 &&
-      !line.startsWith('•')
+      (hasRoleKeyword || hasDate) &&
+      hasSeparator &&
+      line.length < 130 &&
+      !line.startsWith('•') &&
+      !line.startsWith('-') &&
+      !/^(?:professional summary|summary|education|skills|certifications|key skills)\b/i.test(line)
     ) {
-      const parts = line.split(/[-–—|•]/).map(p => p.trim()).filter(Boolean);
+      const parts = line.split(/[-–—|•:]/).map(p => p.trim()).filter(Boolean);
       if (parts.length >= 2) {
         const role = sanitizeClaimToEnglish(parts[0]).replace(/\.$/, '');
         const titleWithDates = parts.slice(1).join(' ');
@@ -397,11 +521,11 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
 
         // Collect following bullet points for this role
         const highlights: string[] = [];
-        for (let j = i + 1; j < Math.min(lines.length, i + 6); j++) {
-          if (lines[j].startsWith('•') || lines[j].startsWith('-')) {
+        for (let j = i + 1; j < Math.min(lines.length, i + 7); j++) {
+          if (lines[j].startsWith('•') || lines[j].startsWith('-') || lines[j].startsWith('*')) {
             const h = sanitizeClaimToEnglish(lines[j]);
             if (h) highlights.push(h);
-          } else if (lines[j].length > 0 && /(?:engineer|architect|developer|lead|director|manager)\b/i.test(lines[j]) && /[-–—|•]/.test(lines[j])) {
+          } else if (lines[j].length > 0 && titleKeywordsRegex.test(lines[j]) && /[-–—|•:]/.test(lines[j])) {
             break;
           }
         }

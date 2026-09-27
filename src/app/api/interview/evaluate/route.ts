@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAIService } from '@/lib/services/aiService';
 import { memoryStore } from '@/lib/db/client';
+import { validateToken, extractTokenFromRequest } from '@/lib/auth/authUtils';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { sessionId, clientLLMConfig } = body;
+    const { sessionId, clientLLMConfig, userId: bodyUserId } = body;
 
     if (!sessionId) {
       return NextResponse.json({ success: false, error: 'Session ID required' }, { status: 400 });
     }
 
-    const session = await memoryStore.getSession(sessionId);
+    // Get userId from auth token or body
+    const token = extractTokenFromRequest(req);
+    const auth = token ? validateToken(token) : null;
+    const userId = auth?.userId || bodyUserId || null;
+
+    const session = await memoryStore.getSession(sessionId, userId || undefined);
     if (!session) {
       return NextResponse.json({ success: false, error: 'Session not found' }, { status: 404 });
     }
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
       llmConfig
     );
 
-    await memoryStore.saveReport(report);
+    await memoryStore.saveReport(report, userId || undefined);
 
     return NextResponse.json({
       success: true,

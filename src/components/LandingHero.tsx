@@ -13,21 +13,21 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
   // Simulated adaptive interview sequence on the landing hero
   const demoDialogue = [
     {
-      claim: 'Resume Claim: "Built a Node.js API handling 100,000 users."',
-      aiPrompt: 'What was your role in building that API?',
-      candidateAnswer: 'I designed the backend and handled the database.',
-      nextFollowUp: 'What database did you use and why did you choose it?'
+      claim: 'Resume Claim: "Reduced quarterly forecast cycle from 21 to 6 days across 4 entities."',
+      aiPrompt: 'Could you walk me through the financial methodology and data pipelines you introduced?',
+      candidateAnswer: 'I consolidated multi-currency ERP reporting into SAP and automated the reconciliation models.',
+      nextFollowUp: 'When budget assumptions shifted, how did you perform variance analysis to protect margins?'
     },
     {
-      claim: 'Investigating Technology Choice: PostgreSQL + Redis',
-      aiPrompt: 'What database did you use and why did you choose it over alternatives?',
-      candidateAnswer: 'PostgreSQL with Redis caching for hot session data.',
-      nextFollowUp: 'How did you handle performance and connection pooling when traffic surged?'
+      claim: 'Resume Claim: "Scaled organization from 180 to 420 employees while reducing time-to-hire by 32%."',
+      aiPrompt: 'What sourcing channels and stakeholder SLAs did you establish to achieve that velocity?',
+      candidateAnswer: 'Implemented structured ATS workflows and expanded campus hiring partnerships.',
+      nextFollowUp: 'How did you ensure candidate quality and retention remained high during that rapid scale?'
     },
     {
-      claim: 'Investigating Scalability: 100,000 Peak Users',
-      aiPrompt: 'How did you handle performance when traffic increased?',
-      candidateAnswer: 'Used PgBouncer connection pooling and read replicas.',
+      claim: 'Resume Claim: "Grew annual recurring revenue from $4M to $18M while lowering blended CAC by 28%."',
+      aiPrompt: 'What attribution modeling and channel optimization strategy drove that CAC reduction?',
+      candidateAnswer: 'Restructured lifecycle nurture funnels and reallocated budget based on multi-touch analytics.',
       nextFollowUp: 'Verified! Evidence logged to candidate credibility report.'
     }
   ];
@@ -79,7 +79,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({ onStart }) => {
           maxWidth: '720px',
           margin: '0 auto'
         }}>
-          Upload any engineering resume. The AI extracts technical assertions, initiates an adaptive deep-dive, and investigates candidate answers in real time—generating evidence-based credibility reports.
+          Upload any candidate resume across Finance, HR, Marketing, Sales, Healthcare, Legal, Education, or Technology. The AI dynamically extracts key assertions, initiates an adaptive deep-dive, and investigates candidate answers in real time—generating evidence-based credibility reports.
         </p>
       </div>
 

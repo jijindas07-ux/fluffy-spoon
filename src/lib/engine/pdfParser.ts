@@ -449,8 +449,8 @@ export function extractKeyPointsFromPdfText(rawText: string): string[] {
   const keyPoints: string[] = [];
   const seen = new Set<string>();
 
-  const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|\$))/i;
-  const actionVerbRegex = /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|integrated|collaborated|executed|configured|deployed|mentored|refactored|secured|migrated|tested)\b/i;
+  const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|revenue|budget|sales|leads|roi|accounts|patients|students|cases|hires|interviews|profiles|applications|retention|margin|growth|deals|contracts|units|tickets|\$|€|£|₹))/i;
+  const actionVerbRegex = /^(?:built|architected|designed|developed|implemented|optimized|scaled|reduced|created|managed|directed|spearheaded|engineered|led|delivered|handled|improved|analyzed|coordinated|maintained|authored|resolved|established|automated|launched|integrated|collaborated|executed|configured|deployed|mentored|refactored|secured|migrated|tested|audited|forecasted|budgeted|negotiated|recruited|sourced|screened|counseled|trained|taught|administered|closed|treated|advocated|litigated|formulated|standardized|transformed|facilitated|curated|evaluated|monitored)\b/i;
 
   for (const line of rawLines) {
     if (!isReadableEnglishText(line)) continue;
@@ -460,7 +460,7 @@ export function extractKeyPointsFromPdfText(rawText: string): string[] {
     if (cleanLine.length < 25 || cleanLine.length > 300) continue;
 
     // Filter out standard section headers
-    if (/^(experience|education|skills|summary|projects|contact|certifications|awards|languages|hobbies|references|interests|technical skills|professional experience)$/i.test(cleanLine)) {
+    if (/^(experience|education|skills|summary|projects|contact|certifications|awards|languages|hobbies|references|interests|technical skills|professional experience|core competencies|work history|career history|employment history)$/i.test(cleanLine)) {
       continue;
     }
 

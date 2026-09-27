@@ -29,10 +29,10 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
     console.log(`[PROFILE] Processing profile: ID=${profileData.id}, Name="${profileData.name}", ClaimsCount=${profileData.claims.length}`);
 
     const stages = [
-      'Extracting Document Structure & Typography...',
-      'Identifying Projects, Stack & Quantifiable Assertions...',
-      'Indexing Key Claims (Traffic, Architecture, Latency)...',
-      'Synthesizing Adaptive Knowledge Graph...'
+      'Extracting Document Structure & Content...',
+      'Identifying Professional Experience, Skills & Achievements...',
+      'Analyzing Key Accomplishments & Impact Metrics...',
+      'Building Adaptive Interview Knowledge Graph...'
     ];
 
     for (let i = 0; i < stages.length; i++) {
@@ -164,7 +164,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
           Upload Candidate Resume
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: 1.5 }}>
-          Drag & drop a candidate resume or select one of our curated high-caliber engineering presets to begin.
+          Drag & drop a candidate resume or select one of our curated candidate presets across industries to begin.
         </p>
       </div>
 
@@ -381,7 +381,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
               <textarea
                 value={manualText}
                 onChange={(e) => setManualText(e.target.value)}
-                placeholder="Paste candidate resume or technical background here..."
+                placeholder="Paste candidate resume or professional background here..."
                 rows={5}
                 style={{
                   width: '100%',

@@ -4,10 +4,16 @@ import { extractTextFromPdfBuffer, cleanPdfText, extractKeyPointsFromPdfText } f
 import { SAMPLE_CANDIDATES } from '@/lib/data/sampleResumes';
 import { memoryStore } from '@/lib/db/client';
 import { LLMService, LLMConfig } from '@/lib/services/llmService';
+import { validateToken, extractTokenFromRequest } from '@/lib/auth/authUtils';
 
 export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get('content-type') || '';
+
+    // Get optional auth for user-scoped storage
+    const token = extractTokenFromRequest(req);
+    const auth = token ? validateToken(token) : null;
+    const userId = auth?.userId || null;
 
     let rawText = '';
     let candidateName = 'Candidate';
@@ -21,6 +27,7 @@ export async function POST(req: NextRequest) {
       const file = formData.get('file') as File | null;
       candidateName = (formData.get('candidateName') as string) || (file?.name ? file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ') : 'Candidate');
       const llmConfigJson = formData.get('clientLLMConfig') as string | null;
+      const bodyUserId = formData.get('userId') as string | null;
 
       if (llmConfigJson) {
         try { clientLLMConfig = JSON.parse(llmConfigJson); } catch {}
@@ -95,7 +102,8 @@ export async function POST(req: NextRequest) {
       profile.scannedKeyPoints = directKeyPoints;
     }
 
-    await memoryStore.saveCandidate(profile);
+    // Save candidate with userId for data isolation
+    await memoryStore.saveCandidate(profile, userId || undefined);
 
     return NextResponse.json({ 
       success: true, 

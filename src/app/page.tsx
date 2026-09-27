@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { LandingHero } from '@/components/LandingHero';
 import { HowItWorks } from '@/components/HowItWorks';
@@ -11,15 +12,58 @@ import { LiveInterview } from '@/components/LiveInterview';
 import { EvaluationReportView } from '@/components/EvaluationReport';
 import { CandidateProfile, EvaluationReport, InterviewConfig, InterviewSession } from '@/lib/types';
 import { StoredAISettings } from '@/components/AISettingsModal';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 type AppStep = 'landing' | 'upload' | 'profile' | 'setup' | 'interview' | 'report';
 
-export default function Home() {
+const SESSION_PERSIST_KEY = 'verveai_active_session';
+const CANDIDATE_PERSIST_KEY = 'verveai_active_candidate';
+
+function HomeInner() {
+  const { user, token } = useAuth();
+  const searchParams = useSearchParams();
   const [currentStep, setCurrentStep] = useState<AppStep>('landing');
   const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null);
   const [interviewSession, setInterviewSession] = useState<InterviewSession | null>(null);
   const [evaluationReport, setEvaluationReport] = useState<EvaluationReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasRestoredSession, setHasRestoredSession] = useState(false);
+
+  // Attempt to restore in-progress session from localStorage after mount
+  useEffect(() => {
+    if (hasRestoredSession) return;
+    setHasRestoredSession(true);
+
+    try {
+      const savedSessionJson = localStorage.getItem(SESSION_PERSIST_KEY);
+      const savedCandidateJson = localStorage.getItem(CANDIDATE_PERSIST_KEY);
+
+      if (savedSessionJson && savedCandidateJson) {
+        const savedSession: InterviewSession = JSON.parse(savedSessionJson);
+        const savedCandidate: CandidateProfile = JSON.parse(savedCandidateJson);
+
+        // Only restore if the session was actually in-progress (not completed)
+        if (savedSession && savedSession.status === 'in_progress' && savedSession.turns.length > 0) {
+          console.log(`[RESTORE] Found in-progress session ${savedSession.id} for ${savedCandidate.name}. Restoring...`);
+          setCandidateProfile(savedCandidate);
+          setInterviewSession(savedSession);
+          setCurrentStep('interview');
+        }
+      }
+    } catch (e) {
+      console.warn('[RESTORE] Failed to restore session from localStorage:', e);
+    }
+  }, [hasRestoredSession]);
+
+  // Persist active session to localStorage on changes
+  useEffect(() => {
+    if (interviewSession && interviewSession.status === 'in_progress') {
+      localStorage.setItem(SESSION_PERSIST_KEY, JSON.stringify(interviewSession));
+      if (candidateProfile) {
+        localStorage.setItem(CANDIDATE_PERSIST_KEY, JSON.stringify(candidateProfile));
+      }
+    }
+  }, [interviewSession, candidateProfile]);
 
   const getStoredLLMConfig = () => {
     const saved = localStorage.getItem('verve_ai_settings');
@@ -34,6 +78,11 @@ export default function Home() {
     return undefined;
   };
 
+  const getAuthHeaders = (): Record<string, string> => {
+    const t = token || localStorage.getItem('verveai_token');
+    return t ? { 'Authorization': `Bearer ${t}` } : {};
+  };
+
   const handleStartFromLanding = () => {
     setCurrentStep('upload');
   };
@@ -43,6 +92,9 @@ export default function Home() {
     setCandidateProfile(profile);
     setInterviewSession(null);
     setEvaluationReport(null);
+    // Clear any previous persisted sessions to avoid stale data
+    localStorage.removeItem(SESSION_PERSIST_KEY);
+    localStorage.removeItem(CANDIDATE_PERSIST_KEY);
     setCurrentStep('profile');
   };
 
@@ -58,11 +110,15 @@ export default function Home() {
       console.log(`[INTERVIEW ENGINE] Starting interview for candidate ${candidateProfile.id} (${candidateProfile.name})`);
       const res = await fetch('/api/interview/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({
           candidateProfile,
           config,
-          clientLLMConfig
+          clientLLMConfig,
+          userId: user?.id
         })
       });
       const data = await res.json();
@@ -85,15 +141,22 @@ export default function Home() {
       const clientLLMConfig = getStoredLLMConfig();
       const res = await fetch('/api/interview/evaluate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeaders()
+        },
         body: JSON.stringify({
           sessionId: interviewSession.id,
-          clientLLMConfig
+          clientLLMConfig,
+          userId: user?.id
         })
       });
       const data = await res.json();
       if (data.success && data.report) {
         setEvaluationReport(data.report);
+        // Clear persisted session once completed
+        localStorage.removeItem(SESSION_PERSIST_KEY);
+        localStorage.removeItem(CANDIDATE_PERSIST_KEY);
         setCurrentStep('report');
       }
     } catch (err) {
@@ -109,6 +172,14 @@ export default function Home() {
     setCandidateProfile(null);
     setInterviewSession(null);
     setEvaluationReport(null);
+    // Clear persisted state
+    localStorage.removeItem(SESSION_PERSIST_KEY);
+    localStorage.removeItem(CANDIDATE_PERSIST_KEY);
+  };
+
+  // Update local session state when LiveInterview updates turns via API
+  const handleSessionUpdate = (updatedSession: InterviewSession) => {
+    setInterviewSession(updatedSession);
   };
 
   return (
@@ -150,6 +221,8 @@ export default function Home() {
             key={interviewSession.id}
             session={interviewSession}
             onComplete={handleCompleteInterview}
+            onSessionUpdate={handleSessionUpdate}
+            userId={user?.id}
           />
         )}
 
@@ -172,9 +245,17 @@ export default function Home() {
         color: 'var(--text-faint)'
       }}>
         <div className="container">
-          <p>© 2026 VerveAI Autonomous Adaptive Interview Platform. Powered by LLM & Cognitive Semantic Engine.</p>
+          <p>© 2026 VerveAI Universal Adaptive Interview Platform · Powered by LLM & Cognitive Semantic Engine · <a href="/dashboard" style={{ color: 'var(--text-faint)', textDecoration: 'none' }}>Dashboard</a> · <a href="/admin" style={{ color: 'var(--text-faint)', textDecoration: 'none' }}>Admin</a></p>
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: 'var(--bg-base)' }} />}>
+      <HomeInner />
+    </Suspense>
   );
 }

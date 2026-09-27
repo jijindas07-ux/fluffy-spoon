@@ -8,14 +8,16 @@ import { StoredAISettings } from './AISettingsModal';
 interface LiveInterviewProps {
   session: InterviewSession;
   onComplete: () => void;
+  onSessionUpdate?: (session: InterviewSession) => void;
+  userId?: string;
 }
 
-export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSession, onComplete }) => {
+export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSession, onComplete, onSessionUpdate, userId }) => {
   const [session, setSession] = useState<InterviewSession>(initialSession);
   const [currentResponse, setCurrentResponse] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [investigationContext, setInvestigationContext] = useState(
-    initialSession.turns[0]?.evaluationNote || `Investigating: "${session.candidate.claims[0]?.rawClaim || 'Core Engineering Work'}"`
+    initialSession.turns[0]?.evaluationNote || `Investigating: "${session.candidate.claims[0]?.rawClaim || 'Professional Background'}"`
   );
   const [currentClaimDepth, setCurrentClaimDepth] = useState(1);
   const [secondsRemaining, setSecondsRemaining] = useState(session.config.durationMinutes * 60);
@@ -63,25 +65,34 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
       } catch (e) {}
     }
 
+    // Get auth token for user-scoped session access
+    const authToken = localStorage.getItem('verveai_token');
+    const authHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authToken) authHeaders['Authorization'] = `Bearer ${authToken}`;
+
     try {
       const res = await fetch('/api/interview/respond', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders,
         body: JSON.stringify({
           sessionId: session.id,
           answerText: answer,
-          clientLLMConfig
+          clientLLMConfig,
+          userId
         })
       });
 
       const data = await res.json();
       if (data.success) {
-        setSession((prev) => ({
-          ...prev,
+        const updatedSession = {
+          ...session,
           turns: data.turns,
           currentClaimDepth: data.claimDepthLevel,
-          status: data.isSessionComplete ? 'completed' : 'in_progress'
-        }));
+          status: data.isSessionComplete ? 'completed' as const : 'in_progress' as const
+        };
+        setSession(updatedSession);
+        // Propagate to parent for localStorage persistence
+        if (onSessionUpdate) onSessionUpdate(updatedSession);
         setCurrentClaimDepth(data.claimDepthLevel);
         if (data.investigationContext) {
           setInvestigationContext(data.investigationContext);
@@ -390,7 +401,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div className="mobile-hide" style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-              Tip: Explain concrete trade-offs, tech stack details, and specific parameters for highest evaluation accuracy.
+              Tip: Share specific details, decisions, metrics, and real-world examples for the most accurate evaluation.
             </div>
 
             <button

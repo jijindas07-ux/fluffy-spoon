@@ -1,9 +1,10 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
+import { AuthProvider } from '@/lib/auth/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'VerveAI - Autonomous Adaptive Technical Interview Engine',
-  description: 'AI that analyzes resumes, extracts quantifiable claims, and conducts multi-turn dynamic technical interviews with evidence-based verification reports.',
+  title: 'VerveAI - Autonomous Adaptive Professional Interview Engine',
+  description: 'Universal AI that analyzes resumes across all industries, extracts quantifiable claims, and conducts multi-turn dynamic professional interviews with evidence-based verification reports.',
 };
 
 export const viewport: Viewport = {
@@ -24,7 +25,9 @@ export default function RootLayout({
       <body>
         <div className="bg-ambient-grid" />
         <div className="bg-dot-pattern" />
-        <main>{children}</main>
+        <AuthProvider>
+          <main>{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

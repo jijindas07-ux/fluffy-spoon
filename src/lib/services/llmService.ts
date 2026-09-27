@@ -59,37 +59,37 @@ export class LLMService {
     const hasPdfAttachment = Boolean(pdfBase64 && llmConfig.provider === 'gemini');
     const cleanedText = cleanPdfText(rawText || '');
     
-    const prompt = `You are a Principal Technical Recruiter and AI Talent Intelligence Engine.
-${hasPdfAttachment ? 'Thoroughly examine the attached candidate resume document (including header, all work history roles, multi-column sections, technical skills, quantifiable bullet points, and project deliverables).' : 'Thoroughly examine the extracted resume text below.'}
+    const prompt = `You are an Executive Talent Intelligence Engine and Senior Hiring Partner evaluating candidate resumes across all industries (including Finance, HR, Marketing, Sales, Healthcare, Legal, Education, Operations, and IT).
+${hasPdfAttachment ? 'Thoroughly examine the attached candidate resume document (including header, all work history roles, multi-column sections, core competencies, quantifiable bullet points, and project deliverables).' : 'Thoroughly examine the extracted resume text below.'}
 
 ${cleanedText && cleanedText.length > 20 ? `RESUME TEXT:
 ${cleanedText.slice(0, 12000)}` : ''}
 
 ANALYSIS GOALS (ALL IN PLAIN, FLUENT ENGLISH):
-1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name, current/latest Job Title, and calculate total years of professional experience from the dates on the resume.
-2. **Key Roles & Companies**: Identify the candidate's key employment roles, company names, and employment dates.
-3. **Verifiable Claims (CRITICAL: CLEAN ENGLISH ONLY, KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE ENGLISH SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Lined up 40+ lateral hiring interviews within 90 days."). NEVER dump PDF tags, font bytecode, or multiple sentences into a single claim!
-4. **Metrics & Impact**: Capture the exact metrics, percentages, numbers, volumes, or business outcomes mentioned.
-5. **Categorization**: Categorize each claim naturally (e.g., "Scale & Traffic", "Database & Storage", "Performance & Latency", "Reliability & CI/CD", "Leadership").
-6. **Skills & Tools**: Extract all relevant skills, tools, and platforms explicitly mentioned on the resume.
+1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name, actual current/latest Job Title, and calculate total years of professional experience from the dates on the resume. NEVER assume the candidate works in IT or software unless clearly stated on the resume.
+2. **Key Roles & Companies**: Identify the candidate's key employment roles, company or institution names, and employment dates.
+3. **Verifiable Claims (CRITICAL: CLEAN ENGLISH ONLY, KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE ENGLISH SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Managed a $4.2M departmental budget with zero negative variances."). NEVER dump PDF tags, font bytecode, or multiple sentences into a single claim!
+4. **Metrics & Impact**: Capture the exact metrics, percentages, revenue figures, numbers, volumes, or business outcomes mentioned.
+5. **Categorization**: Categorize each claim naturally using universal categories: "Impact & Results", "Leadership & Management", "Process & Operations", "Domain Expertise", "Strategy & Planning", or "Scale & Systems".
+6. **Skills & Tools**: Extract all relevant professional skills, methodologies, enterprise platforms (ERP, CRM, ATS, EHR, LMS, etc.), and tools explicitly mentioned on the resume.
 
 Respond ONLY with a valid JSON object matching this schema:
 {
   "name": "Candidate Full Name",
-  "title": "Exact Current or Latest Role Title",
+  "title": "Exact Current or Latest Role Title (e.g. Senior Financial Analyst, Recruitment Manager, Registered Nurse)",
   "experienceYears": 5,
   "summary": "2-3 sentence executive summary accurately capturing their background, key competencies, and primary domain.",
   "skills": {
-    "languages": ["Languages / Core competencies"],
-    "frameworks": ["Frameworks / Methodologies"],
-    "databases": ["Databases / ATS / Systems"],
+    "languages": ["Core Competencies / Disciplines"],
+    "frameworks": ["Methodologies / Frameworks / Standards"],
+    "databases": ["Enterprise Systems / ERP / CRM / ATS / Databases"],
     "toolsAndInfra": ["Tools / Platforms / Software"]
   },
   "claims": [
     {
       "id": "claim-1",
       "rawClaim": "Single concise English sentence under 20 words describing one specific achievement or metric.",
-      "category": "Scale & Traffic",
+      "category": "Impact & Results",
       "contextProject": "Company or Project Name",
       "claimedMetrics": "Exact metric mentioned (or 'Documented Highlight')",
       "confidenceLevel": "High",
@@ -99,11 +99,11 @@ Respond ONLY with a valid JSON object matching this schema:
   "projects": [
     {
       "id": "proj-1",
-      "title": "Project or Company Name",
+      "title": "Role or Company Name",
       "role": "Role Title",
       "duration": "Dates (e.g. 2022 - Present)",
-      "technologies": ["Tech used"],
-      "description": "Short project summary.",
+      "technologies": ["Tools / Methodologies used"],
+      "description": "Short summary of role or project.",
       "highlights": ["Key bullet point 1", "Key bullet point 2"]
     }
   ],
@@ -129,7 +129,7 @@ Respond ONLY with a valid JSON object matching this schema:
             return {
               id: c.id || `claim-${i + 1}`,
               rawClaim: cleanClaim,
-              category: c.category || 'Architecture',
+              category: c.category || 'Domain Expertise',
               contextProject: c.contextProject || 'Project Experience',
               claimedMetrics: c.claimedMetrics || 'Documented Highlight',
               confidenceLevel: c.confidenceLevel || 'High',
@@ -143,9 +143,9 @@ Respond ONLY with a valid JSON object matching this schema:
           return {
             id: uniqueCandId,
             name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
-            title: parsed.title || 'Professional',
+            title: parsed.title || 'Professional Candidate',
             experienceYears: Number(parsed.experienceYears) || 0,
-            summary: parsed.summary || 'Demonstrated technical and professional experience documented on resume.',
+            summary: parsed.summary || 'Demonstrated professional experience documented on resume.',
             skills: {
               languages: parsed.skills?.languages || [],
               frameworks: parsed.skills?.frameworks || [],
@@ -190,10 +190,10 @@ Respond ONLY with a valid JSON object matching this schema:
 
     const isFirstQuestion = history.length === 0;
 
-    const prompt = `You are a professional, highly articulate interviewer.
+    const prompt = `You are a professional, highly articulate interviewer across all industries.
 You are conducting a live interview for candidate "${candidate.name}".
 
-CANDIDATE TITLE / ROLE: ${candidate.title || 'Professional'}
+CANDIDATE TITLE / ROLE: ${candidate.title || 'Professional Candidate'}
 CANDIDATE RESUME SUMMARY:
 ${candidate.summary}
 Key Skills / Knowledge: ${[...candidate.skills.languages, ...candidate.skills.frameworks, ...candidate.skills.databases, ...candidate.skills.toolsAndInfra].join(', ')}
@@ -211,10 +211,10 @@ ${transcriptFormatted || '(Interview is just starting - Question #1)'}
 CRITICAL INTERVIEW INSTRUCTIONS:
 1. **${isFirstQuestion ? 'OPENING QUESTION' : 'INTERVIEW PROBE & FOLLOW-UP'}**:
    ${isFirstQuestion ? `- Greet the candidate by name ("Hello ${candidate.name.split(' ')[0]}...").
-   - Briefly introduce that you will be exploring their background and the key experiences listed on their resume.
+   - Briefly introduce that you will be exploring their professional background and the key accomplishments listed on their resume.
    - Ask an engaging, clear, and probing question that directly inquires about their actual resume claim: "${activeClaim?.rawClaim}".
-   - Base your question strictly on what is stated in the claim — ask about their specific role, methodologies, key decisions, challenges faced, tools used, or outcomes achieved.
-   - DO NOT make assumptions about rigid external job templates or force a specific backend/systems framework unless that is what the claim describes.` : `- Carefully evaluate the candidate's last answer.
+   - Base your question strictly on what is stated in the claim and appropriate for their actual profession (Finance, HR, Marketing, Sales, Healthcare, Legal, Education, IT, etc.) — ask about their specific role, methodologies, key decisions, challenges faced, tools/systems used, or business outcomes achieved.
+   - NEVER make assumptions about rigid external templates or force technical/coding questions unless the candidate's actual role is explicitly in software/IT.` : `- Carefully evaluate the candidate's last answer.
    - Probe deeper into the specific tools, techniques, processes, or decisions they mentioned in their previous response.
    - Ask for concrete implementation details, trade-offs, or real-world examples from their experience.
    - Keep your question clear, natural, professional, and targeted (1-3 sentences max).`}
@@ -240,7 +240,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
           question: parsed.question,
           anchoredClaimId: parsed.anchoredClaimId || activeClaim?.id || 'claim-1',
           claimDepthLevel: typeof parsed.claimDepthLevel === 'number' ? parsed.claimDepthLevel : currentClaimDepth + 1,
-          investigationContext: parsed.assessmentNote || `Investigating: "${activeClaim?.rawClaim || 'Core Engineering'}"`,
+          investigationContext: parsed.assessmentNote || `Investigating: "${activeClaim?.rawClaim || 'Professional Background'}"`,
           detectedEntities: Array.isArray(parsed.detectedEntities) ? parsed.detectedEntities : [],
           isSessionComplete: Boolean(parsed.isSessionComplete || isLastTurn)
         };
@@ -267,7 +267,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
       return `${t.speaker === 'ai' ? 'Interviewer' : 'Candidate'}: "${t.text}"`;
     }).join('\n\n');
 
-    const prompt = `You are a Senior Engineering Director and Hiring Committee Chair evaluating candidate "${candidate.name}" based on a live technical interview transcript.
+    const prompt = `You are a Senior Executive Hiring Committee Chair and Domain Assessment Lead evaluating candidate "${candidate.name}" based on a live professional interview transcript.
 
 CANDIDATE: ${candidate.name}
 TARGET ROLE: ${config.seniority} ${config.roleTitle}
@@ -281,8 +281,8 @@ FULL INTERVIEW TRANSCRIPT:
 ${transcriptFormatted}
 
 EVALUATION INSTRUCTIONS:
-- Analyze every answer provided by the candidate.
-- Look for genuine evidence vs. superficial buzzwords, concrete trade-off reasoning, edge-case awareness, communication clarity, and alignment with their resume claims.
+- Analyze every answer provided by the candidate against industry benchmarks for their specific profession.
+- Look for genuine evidence vs. superficial buzzwords, concrete decision trade-offs, problem-solving, communication clarity, and alignment with their resume claims.
 - Extract actual quotes directly from the candidate's spoken turns.
 - Provide objective, calibrated scores from 0-100 for each dimension.
 
@@ -290,30 +290,30 @@ Respond ONLY with a valid JSON object matching this exact schema:
 {
   "overallScore": 85,
   "recommendation": "Strong Hire | Hire | Leaning Hire | Needs Follow-Up | Do Not Hire",
-  "executiveSummary": "Comprehensive 3-4 sentence hiring committee summary evaluating technical depth, credibility, and real-world system design readiness.",
+  "executiveSummary": "Comprehensive 3-4 sentence hiring committee summary evaluating role competency, professional depth, credibility, and real-world execution readiness.",
   "dimensions": {
     "technicalCompetency": {
       "score": 88,
-      "label": "Technical Competency",
-      "summary": "Detailed assessment of their domain depth and tech stack command.",
+      "label": "Role & Domain Competency",
+      "summary": "Detailed assessment of their domain depth, core competencies, and practical execution standards.",
       "evidenceQuotes": ["Exact candidate quote 1", "Exact candidate quote 2"]
     },
     "problemSolving": {
       "score": 82,
       "label": "Problem Solving & Trade-offs",
-      "summary": "Detailed assessment of their trade-off evaluations and design rationale.",
+      "summary": "Detailed assessment of their decision rationale and how they navigate operational constraints.",
       "evidenceQuotes": ["Exact candidate quote"]
     },
     "communication": {
       "score": 85,
       "label": "Communication & Conciseness",
-      "summary": "Assessment of clarity, structure, and precision in technical explanations.",
+      "summary": "Assessment of clarity, structure, and precision in professional explanations.",
       "evidenceQuotes": ["Exact candidate quote"]
     },
     "experienceDepth": {
       "score": 84,
       "label": "Experience Depth",
-      "summary": "Assessment of hands-on architectural ownership vs passive involvement.",
+      "summary": "Assessment of hands-on initiative ownership vs passive involvement.",
       "evidenceQuotes": ["Exact candidate quote"]
     },
     "resumeCredibility": {
@@ -344,9 +344,9 @@ Respond ONLY with a valid JSON object matching this exact schema:
   ],
   "verificationAreas": [
     {
-      "area": "Specific topic (e.g. Distributed Consensus / Database Indexing)",
+      "area": "Specific topic relevant to role",
       "issueFound": "Observation from interview",
-      "suggestedOnsiteQuestion": "Targeted whiteboard or deep-dive question for round 2"
+      "suggestedOnsiteQuestion": "Targeted follow-up scenario question for round 2"
     }
   ],
   "evidenceItems": [
@@ -377,7 +377,10 @@ Respond ONLY with a valid JSON object matching this exact schema:
           overallScore: Number(parsed.overallScore) || 75,
           recommendation: parsed.recommendation || 'Hire',
           executiveSummary: parsed.executiveSummary,
-          dimensions: parsed.dimensions,
+          dimensions: {
+            ...parsed.dimensions,
+            roleCompetency: parsed.dimensions?.technicalCompetency
+          },
           strengths: parsed.strengths || [],
           weaknesses: parsed.weaknesses || [],
           verificationAreas: parsed.verificationAreas || [],
@@ -466,7 +469,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: 'You are an expert technical interviewer and hiring committee chair. Always return clean valid JSON when requested.' },
+            { role: 'system', content: 'You are an expert professional interviewer and hiring committee chair across all industries. Always return clean valid JSON when requested.' },
             { role: 'user', content: prompt }
           ],
           temperature: 0.3,

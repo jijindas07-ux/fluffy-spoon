@@ -1,10 +1,10 @@
-import { CandidateProfile, ConversationTurn, EvaluationReport, EvidenceItem, InterviewConfig } from '../types';
+import type { CandidateProfile, ConversationTurn, EvaluationReport, EvidenceItem, InterviewConfig } from '../types';
 import { AdaptiveInterviewEngine } from './adaptiveEngine';
 
 export class InterviewEvaluator {
   /**
    * Generates a comprehensive, evidence-based candidate evaluation report
-   * based on the exact conversation transcript.
+   * based on the exact conversation transcript and candidate's specific field.
    */
   public static generateEvaluation(
     candidate: CandidateProfile,
@@ -15,6 +15,7 @@ export class InterviewEvaluator {
     const candidateAnswers = history.filter(t => t.speaker === 'candidate');
     const totalWords = candidateAnswers.reduce((sum, t) => sum + t.text.split(/\s+/).length, 0);
     const avgWordsPerAnswer = candidateAnswers.length > 0 ? Math.round(totalWords / candidateAnswers.length) : 0;
+    const domain = AdaptiveInterviewEngine.detectDomain(candidate);
     
     // Analyze evidence per claim
     const evidenceItems: EvidenceItem[] = [];
@@ -33,16 +34,16 @@ export class InterviewEvaluator {
 
         if (analysis.intent === 'unfamiliar_or_dodged') {
           verdict = 'Superficial / Vague';
-          reasoning = 'Candidate indicated lack of direct ownership or uncertainty regarding this specific implementation detail.';
-        } else if (analysis.intent === 'technical_deep' && analysis.entities.length >= 1) {
+          reasoning = 'Candidate indicated lack of direct ownership or uncertainty regarding this specific deliverable.';
+        } else if ((analysis.intent === 'domain_deep' || analysis.intent === 'technical_deep') && analysis.entities.length >= 1) {
           verdict = 'Strong Validation';
-          reasoning = `Demonstrated hands-on technical command, specifically detailing ${analysis.entities.join(', ')} with concrete engineering reasoning.`;
+          reasoning = `Demonstrated authoritative domain command, specifically detailing ${analysis.entities.join(', ')} with concrete professional reasoning.`;
         } else if (analysis.intent === 'superficial') {
           verdict = 'Superficial / Vague';
-          reasoning = 'Response was high-level and lacked concrete technical trade-off justification or architecture specifics.';
+          reasoning = 'Response was high-level and lacked concrete operational specifics or decision rationale.';
         } else {
           verdict = 'Moderate Evidence';
-          reasoning = `Provided sensible operational context for ${claim.contextProject || 'the service'}, demonstrating practical working familiarity.`;
+          reasoning = `Provided sensible operational context for ${claim.contextProject || 'this initiative'}, demonstrating authentic working familiarity.`;
         }
 
         evidenceItems.push({
@@ -61,8 +62,8 @@ export class InterviewEvaluator {
     const vagueCount = evidenceItems.filter(e => e.assessmentVerdict === 'Superficial / Vague').length;
     const totalResponses = candidateAnswers.length;
 
-    // Technical Competency (50-98)
-    const techScore = Math.min(98, Math.max(50, 70 + (strongValidations * 10) - (vagueCount * 8)));
+    // Role Competency (50-98)
+    const roleScore = Math.min(98, Math.max(50, 70 + (strongValidations * 10) - (vagueCount * 8)));
     // Problem Solving (50-96)
     const problemSolvingScore = Math.min(96, Math.max(52, 72 + (avgWordsPerAnswer > 25 ? 8 : -4) + (strongValidations * 6)));
     // Communication (50-96)
@@ -73,7 +74,7 @@ export class InterviewEvaluator {
     const credibilityScore = Math.min(98, Math.max(45, 75 + (strongValidations * 10) - (vagueCount * 14)));
 
     const overallScore = Math.round(
-      (techScore * 0.3) +
+      (roleScore * 0.3) +
       (problemSolvingScore * 0.2) +
       (communicationScore * 0.15) +
       (depthScore * 0.2) +
@@ -91,8 +92,80 @@ export class InterviewEvaluator {
     const strongAnswer = evidenceItems.find(e => e.assessmentVerdict === 'Strong Validation');
     const vagueAnswer = evidenceItems.find(e => e.assessmentVerdict === 'Superficial / Vague');
 
-    const primaryStrengthQuote = strongAnswer?.candidateQuote || candidateAnswers[0]?.text ? `"${candidateAnswers[0]?.text}"` : '"Demonstrated clear technical domain context."';
+    const primaryStrengthQuote = strongAnswer?.candidateQuote || candidateAnswers[0]?.text ? `"${candidateAnswers[0]?.text}"` : '"Demonstrated clear domain context and professional experience."';
     const primaryWeaknessQuote = vagueAnswer?.candidateQuote || (candidateAnswers.length > 1 ? `"${candidateAnswers[candidateAnswers.length - 1]?.text}"` : 'N/A');
+
+    // Dynamic verification area based on domain
+    let verificationTopic = 'Strategic Trade-offs & Execution Depth';
+    let verificationIssue = 'Probe decision rationale and operational boundaries in follow-up interview.';
+    let verificationQuestion = 'Walk me through a major decision you had to make with incomplete information and how you managed the trade-offs.';
+
+    if (domain === 'finance') {
+      verificationTopic = 'Financial Modeling & Variance Analysis';
+      verificationIssue = 'Deepen inquiry into audit controls, assumptions testing, and capital allocation.';
+      verificationQuestion = 'How do you stress-test financial projections against unforeseen macroeconomic or cash-flow shocks?';
+    } else if (domain === 'hr') {
+      verificationTopic = 'Recruitment Pipeline & Retention Strategy';
+      verificationIssue = 'Verify candidate sourcing channels, employer branding impact, and stakeholder SLA management.';
+      verificationQuestion = 'What structured methods do you use to diagnose and fix drop-offs in your hiring funnel?';
+    } else if (domain === 'marketing') {
+      verificationTopic = 'Campaign Attribution & CAC Efficiency';
+      verificationIssue = 'Examine multi-touch attribution modeling and budget optimization across paid vs organic channels.';
+      verificationQuestion = 'When customer acquisition cost increases unexpectedly, how do you diagnose channel saturation versus creative fatigue?';
+    } else if (domain === 'sales') {
+      verificationTopic = 'Enterprise Deal Velocity & Negotiation';
+      verificationIssue = 'Probe sales cycle acceleration and handling competitive vendor displacement.';
+      verificationQuestion = 'How do you navigate multi-stakeholder procurement objections when defending premium pricing?';
+    } else if (domain === 'healthcare') {
+      verificationTopic = 'Clinical Protocols & Quality Compliance';
+      verificationIssue = 'Verify critical care escalation protocols and interdisciplinary handoff procedures.';
+      verificationQuestion = 'How do you maintain strict patient care standards and HIPAA compliance during high-census crisis surges?';
+    } else if (domain === 'legal') {
+      verificationTopic = 'Regulatory Risk & Contractual Indemnity';
+      verificationIssue = 'Probe statutory interpretation nuances and balancing risk avoidance against commercial timelines.';
+      verificationQuestion = 'How do you structure indemnification and liability caps to balance business deal closure with enterprise protection?';
+    } else if (domain === 'education') {
+      verificationTopic = 'Differentiated Pedagogy & Student Outcomes';
+      verificationIssue = 'Assess formative evaluation strategies and curriculum adaptation for diverse learning profiles.';
+      verificationQuestion = 'How do you utilize ongoing assessment data to adapt curriculum pacing for struggling versus accelerated students?';
+    } else if (domain === 'tech') {
+      verificationTopic = 'System Architecture & Concurrency';
+      verificationIssue = 'Probe failure mode handling, data consistency boundaries, and caching invalidation.';
+      verificationQuestion = 'How would you ensure idempotency and prevent race conditions across high-throughput services?';
+    }
+
+    const reportDimensions = {
+      technicalCompetency: {
+        score: roleScore,
+        label: 'Role & Domain Competency',
+        summary: `Evaluates domain proficiency, methodologies, and execution standards required for the ${config.roleTitle} role.`,
+        evidenceQuotes: candidateAnswers.slice(0, 2).map(t => `"${t.text}"`)
+      },
+      problemSolving: {
+        score: problemSolvingScore,
+        label: 'Problem Solving & Trade-offs',
+        summary: `Assessment of decision-making under operational constraints, competing priorities, and edge cases.`,
+        evidenceQuotes: candidateAnswers.slice(1, 2).map(t => `"${t.text}"`).filter(Boolean)
+      },
+      communication: {
+        score: communicationScore,
+        label: 'Communication & Conciseness',
+        summary: `Clarity, structure, and professional articulation during live probing.`,
+        evidenceQuotes: candidateAnswers.slice(0, 1).map(t => `"${t.text}"`)
+      },
+      experienceDepth: {
+        score: depthScore,
+        label: 'Experience Depth',
+        summary: `Verification of direct hands-on initiative ownership versus passive participation.`,
+        evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion}: ${e.assessmentVerdict}`).slice(0, 2)
+      },
+      resumeCredibility: {
+        score: credibilityScore,
+        label: 'Resume Claim Credibility',
+        summary: `Alignment between documented achievements and live professional verification.`,
+        evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion}: ${e.assessmentVerdict}`)
+      }
+    };
 
     return {
       id: `rep-${Date.now()}`,
@@ -105,68 +178,40 @@ export class InterviewEvaluator {
       totalTurns: history.length,
       overallScore,
       recommendation,
-      executiveSummary: `${candidate.name} completed an adaptive technical probe for the ${config.seniority} ${config.roleTitle} profile across ${totalResponses} conversational turns. ${
+      executiveSummary: `${candidate.name} completed an adaptive professional competency interview for the ${config.seniority} ${config.roleTitle} profile across ${totalResponses} conversational turns. ${
         strongValidations >= 2
-          ? 'The candidate exhibited authentic, hands-on architectural competence, articulating clear trade-offs and concrete tool selections.'
+          ? 'The candidate exhibited authentic, hands-on domain competence, articulating clear decision-making rationale, methodology choices, and measurable outcomes.'
           : vagueCount >= 2
-          ? 'While the candidate demonstrated foundational knowledge, several key claims lacked granular architectural evidence and failure mode trade-off depth.'
-          : 'The candidate demonstrated solid baseline familiarity with core systems, providing reasonable context on their direct responsibilities.'
+          ? 'While the candidate demonstrated foundational knowledge, several key claims lacked granular evidence, operational specifics, and execution depth.'
+          : 'The candidate demonstrated solid baseline familiarity with core domain practices, providing reasonable context on their direct responsibilities.'
       }`,
       dimensions: {
-        technicalCompetency: {
-          score: techScore,
-          label: 'Technical Competency',
-          summary: `Evaluates domain proficiency across architecture, persistence, and service boundaries.`,
-          evidenceQuotes: candidateAnswers.slice(0, 2).map(t => `"${t.text}"`)
-        },
-        problemSolving: {
-          score: problemSolvingScore,
-          label: 'Problem Solving & Trade-offs',
-          summary: `Assessment of decision-making under scaling constraints and traffic bottlenecks.`,
-          evidenceQuotes: candidateAnswers.slice(1, 2).map(t => `"${t.text}"`).filter(Boolean)
-        },
-        communication: {
-          score: communicationScore,
-          label: 'Communication & Conciseness',
-          summary: `Clarity, brevity, and technical articulation during live probing.`,
-          evidenceQuotes: candidateAnswers.slice(0, 1).map(t => `"${t.text}"`)
-        },
-        experienceDepth: {
-          score: depthScore,
-          label: 'Experience Depth',
-          summary: `Verification of direct hands-on ownership versus high-level team participation.`,
-          evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion}: ${e.assessmentVerdict}`).slice(0, 2)
-        },
-        resumeCredibility: {
-          score: credibilityScore,
-          label: 'Resume Claim Credibility',
-          summary: `Alignment between documented achievements and live technical verification.`,
-          evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion}: ${e.assessmentVerdict}`)
-        }
+        ...reportDimensions,
+        roleCompetency: reportDimensions.technicalCompetency
       },
       strengths: [
         {
-          title: strongValidations > 0 ? 'Verified Technical Ownership' : 'Articulate Domain Understanding',
+          title: strongValidations > 0 ? 'Verified Initiative Ownership' : 'Articulate Domain Understanding',
           description: strongValidations > 0
-            ? 'Demonstrated authentic hands-on grasp of implementation details, citing concrete technologies and design decisions.'
-            : 'Communicated high-level system responsibilities clearly throughout the interview.',
+            ? 'Demonstrated authentic hands-on grasp of operational details, citing concrete methodologies and execution decisions.'
+            : 'Communicated high-level professional responsibilities clearly throughout the interview.',
           quote: primaryStrengthQuote
         }
       ],
       weaknesses: [
         {
-          title: vagueCount > 0 ? 'Superficial Claim Verification' : 'Edge-Case Architecture Drill-down',
+          title: vagueCount > 0 ? 'Superficial Claim Verification' : 'Operational Drill-down Depth',
           description: vagueCount > 0
-            ? 'Candidate gave high-level or hesitant responses when probed on granular failure modes and concurrency mechanics.'
-            : 'Could provide deeper quantitative telemetry metrics regarding incident post-mortems.',
+            ? 'Candidate gave high-level or hesitant responses when probed on granular operational challenges and decision rationales.'
+            : 'Could provide deeper quantitative evidence regarding long-term project outcomes.',
           quote: primaryWeaknessQuote
         }
       ],
       verificationAreas: [
         {
-          area: 'Deep Concurrency & Isolation Levels',
-          issueFound: 'Probe distributed locking and transactional isolation boundaries in follow-up whiteboard round.',
-          suggestedOnsiteQuestion: 'How would you ensure idempotency and prevent race conditions across distributed microservices?'
+          area: verificationTopic,
+          issueFound: verificationIssue,
+          suggestedOnsiteQuestion: verificationQuestion
         }
       ],
       evidenceItems

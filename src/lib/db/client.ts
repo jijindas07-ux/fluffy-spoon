@@ -16,35 +16,83 @@ class MemoryStorage {
   private sessions: Map<string, InterviewSession> = new Map();
   private reports: Map<string, EvaluationReport> = new Map();
 
-  async saveCandidate(candidate: CandidateProfile): Promise<CandidateProfile> {
-    this.candidates.set(candidate.id, candidate);
+  // User-scoped indexes for data isolation
+  private candidatesByUser: Map<string, Set<string>> = new Map(); // userId -> Set<candidateId>
+  private sessionsByUser: Map<string, Set<string>> = new Map(); // userId -> Set<sessionId>
+
+  async saveCandidate(candidate: CandidateProfile, userId?: string): Promise<CandidateProfile> {
+    // Tag candidate with userId
+    const taggedCandidate = userId ? { ...candidate, _userId: userId } : candidate;
+    this.candidates.set(candidate.id, taggedCandidate as CandidateProfile);
+    if (userId) {
+      if (!this.candidatesByUser.has(userId)) this.candidatesByUser.set(userId, new Set());
+      this.candidatesByUser.get(userId)!.add(candidate.id);
+    }
     return candidate;
   }
 
-  async getCandidate(id: string): Promise<CandidateProfile | null> {
-    return this.candidates.get(id) || null;
+  async getCandidate(id: string, userId?: string): Promise<CandidateProfile | null> {
+    const candidate = this.candidates.get(id);
+    if (!candidate) return null;
+    // Enforce user isolation: if userId given, only return if it matches or candidate has no userId
+    const c = candidate as any;
+    if (userId && c._userId && c._userId !== userId) return null;
+    return candidate;
   }
 
-  async saveSession(session: InterviewSession): Promise<InterviewSession> {
-    this.sessions.set(session.id, session);
+  async getCandidatesByUser(userId: string): Promise<CandidateProfile[]> {
+    const ids = this.candidatesByUser.get(userId);
+    if (!ids) return [];
+    return Array.from(ids)
+      .map(id => this.candidates.get(id))
+      .filter(Boolean) as CandidateProfile[];
+  }
+
+  async saveSession(session: InterviewSession, userId?: string): Promise<InterviewSession> {
+    const taggedSession = userId ? { ...session, _userId: userId } : session;
+    this.sessions.set(session.id, taggedSession as InterviewSession);
+    if (userId) {
+      if (!this.sessionsByUser.has(userId)) this.sessionsByUser.set(userId, new Set());
+      this.sessionsByUser.get(userId)!.add(session.id);
+    }
     return session;
   }
 
-  async getSession(id: string): Promise<InterviewSession | null> {
-    return this.sessions.get(id) || null;
+  async getSession(id: string, userId?: string): Promise<InterviewSession | null> {
+    const session = this.sessions.get(id);
+    if (!session) return null;
+    const s = session as any;
+    if (userId && s._userId && s._userId !== userId) return null;
+    return session;
   }
 
-  async addTurnToSession(sessionId: string, turn: ConversationTurn): Promise<InterviewSession | null> {
-    const session = this.sessions.get(sessionId);
+  async getSessionsByUser(userId: string): Promise<InterviewSession[]> {
+    const ids = this.sessionsByUser.get(userId);
+    if (!ids) return [];
+    return Array.from(ids)
+      .map(id => this.sessions.get(id))
+      .filter(Boolean) as InterviewSession[];
+  }
+
+  async getAllSessions(): Promise<InterviewSession[]> {
+    return Array.from(this.sessions.values());
+  }
+
+  async getAllCandidates(): Promise<CandidateProfile[]> {
+    return Array.from(this.candidates.values());
+  }
+
+  async addTurnToSession(sessionId: string, turn: ConversationTurn, userId?: string): Promise<InterviewSession | null> {
+    const session = await this.getSession(sessionId, userId);
     if (!session) return null;
     session.turns.push(turn);
     this.sessions.set(sessionId, session);
     return session;
   }
 
-  async saveReport(report: EvaluationReport): Promise<EvaluationReport> {
+  async saveReport(report: EvaluationReport, userId?: string): Promise<EvaluationReport> {
     this.reports.set(report.id, report);
-    const session = this.sessions.get(report.sessionId);
+    const session = await this.getSession(report.sessionId, userId);
     if (session) {
       session.evaluationReport = report;
       session.status = 'completed';
@@ -54,8 +102,30 @@ class MemoryStorage {
     return report;
   }
 
-  async getReport(id: string): Promise<EvaluationReport | null> {
-    return this.reports.get(id) || null;
+  async getReport(id: string, userId?: string): Promise<EvaluationReport | null> {
+    const report = this.reports.get(id);
+    if (!report) return null;
+    // Validate access via session
+    if (userId) {
+      const session = this.sessions.get(report.sessionId) as any;
+      if (session?._userId && session._userId !== userId) return null;
+    }
+    return report;
+  }
+
+  async getAllReports(): Promise<EvaluationReport[]> {
+    return Array.from(this.reports.values());
+  }
+
+  getStats() {
+    const sessions = Array.from(this.sessions.values());
+    return {
+      totalSessions: sessions.length,
+      completedSessions: sessions.filter(s => s.status === 'completed').length,
+      inProgressSessions: sessions.filter(s => s.status === 'in_progress').length,
+      totalCandidates: this.candidates.size,
+      totalReports: this.reports.size
+    };
   }
 }
 

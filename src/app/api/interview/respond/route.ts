@@ -3,17 +3,23 @@ import { getAIService } from '@/lib/services/aiService';
 import { memoryStore } from '@/lib/db/client';
 import { ConversationTurn } from '@/lib/types';
 import { AdaptiveInterviewEngine } from '@/lib/engine/adaptiveEngine';
+import { validateToken, extractTokenFromRequest } from '@/lib/auth/authUtils';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { sessionId, answerText, clientLLMConfig } = body;
+    const { sessionId, answerText, clientLLMConfig, userId: bodyUserId } = body;
 
     if (!sessionId || !answerText?.trim()) {
       return NextResponse.json({ success: false, error: 'Session ID and non-empty answer required' }, { status: 400 });
     }
 
-    const session = await memoryStore.getSession(sessionId);
+    // Get userId from auth token or body
+    const token = extractTokenFromRequest(req);
+    const auth = token ? validateToken(token) : null;
+    const userId = auth?.userId || bodyUserId || null;
+
+    const session = await memoryStore.getSession(sessionId, userId || undefined);
     if (!session) {
       return NextResponse.json({ success: false, error: 'Session not found' }, { status: 404 });
     }
@@ -80,7 +86,7 @@ export async function POST(req: NextRequest) {
       session.status = 'completed';
     }
 
-    await memoryStore.saveSession(session);
+    await memoryStore.saveSession(session, userId || undefined);
 
     return NextResponse.json({
       success: true,
