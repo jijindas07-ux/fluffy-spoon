@@ -1,16 +1,18 @@
-import type { CandidateProfile, ConversationTurn, EvaluationReport, EvidenceItem, InterviewConfig } from '../types';
+import type { CandidateProfile, ConversationTurn, EvaluationReport, EvidenceItem, InterviewConfig, SkillAssessment } from '../types';
 import { AdaptiveInterviewEngine } from './adaptiveEngine';
 
 export class InterviewEvaluator {
   /**
    * Generates a comprehensive, evidence-based candidate evaluation report
-   * based on the exact conversation transcript and candidate's specific field.
+   * based on the exact conversation transcript, versioned rubrics (FR-011),
+   * and candidate's specific field (FR-015).
    */
   public static generateEvaluation(
     candidate: CandidateProfile,
     config: InterviewConfig,
     history: ConversationTurn[],
-    sessionId: string
+    sessionId: string,
+    reportVersion: number = 1
   ): EvaluationReport {
     const candidateAnswers = history.filter(t => t.speaker === 'candidate');
     const totalWords = candidateAnswers.reduce((sum, t) => sum + t.text.split(/\s+/).length, 0);
@@ -52,7 +54,8 @@ export class InterviewEvaluator {
           claimAssertion: claim.rawClaim,
           candidateQuote: `"${relevantTurn.text.trim()}"`,
           assessmentVerdict: verdict,
-          reasoning
+          reasoning,
+          stage: relevantTurn.stage
         });
       }
     }
@@ -81,19 +84,69 @@ export class InterviewEvaluator {
       (credibilityScore * 0.15)
     );
 
+    // Role Readiness (FR-015)
+    let roleReadiness: EvaluationReport['roleReadiness'] = 'Ready with Minor Onboarding';
     let recommendation: EvaluationReport['recommendation'] = 'Hire';
-    if (overallScore >= 88) recommendation = 'Strong Hire';
-    else if (overallScore >= 77) recommendation = 'Hire';
-    else if (overallScore >= 68) recommendation = 'Leaning Hire';
-    else if (overallScore >= 58) recommendation = 'Needs Follow-Up';
-    else recommendation = 'Do Not Hire';
+
+    if (overallScore >= 88) {
+      roleReadiness = 'Immediate Match';
+      recommendation = 'Strong Hire';
+    } else if (overallScore >= 77) {
+      roleReadiness = 'Ready with Minor Onboarding';
+      recommendation = 'Hire';
+    } else if (overallScore >= 68) {
+      roleReadiness = 'Needs Targeted Upskilling';
+      recommendation = 'Leaning Hire';
+    } else if (overallScore >= 58) {
+      roleReadiness = 'Needs Targeted Upskilling';
+      recommendation = 'Needs Follow-Up';
+    } else {
+      roleReadiness = 'Not Currently Ready';
+      recommendation = 'Do Not Hire';
+    }
+
+    // Granular Skill Assessments (FR-011 / Database skill_assessments)
+    const skillAssessments: SkillAssessment[] = [
+      {
+        skill: `${config.roleTitle} Domain Standards`,
+        category: 'Core Competency',
+        score: roleScore,
+        confidence: 90,
+        evidenceQuotes: candidateAnswers.slice(0, 2).map(a => `"${a.text.slice(0, 120)}..."`),
+        gapIdentified: roleScore < 75 ? 'Requires deeper alignment on industry-standard tooling & SLAs' : undefined
+      },
+      {
+        skill: 'Applied Problem Solving & Edge Cases',
+        category: 'Methodology',
+        score: problemSolvingScore,
+        confidence: 85,
+        evidenceQuotes: candidateAnswers.slice(1, 3).map(a => `"${a.text.slice(0, 120)}..."`),
+        gapIdentified: problemSolvingScore < 75 ? 'Practice structured decision frameworks under ambiguity' : undefined
+      },
+      {
+        skill: 'Professional Articulation & Conciseness',
+        category: 'Communication',
+        score: communicationScore,
+        confidence: 92,
+        evidenceQuotes: candidateAnswers.slice(0, 1).map(a => `"${a.text.slice(0, 120)}..."`),
+        gapIdentified: communicationScore < 70 ? 'Include more quantifiable metrics when presenting results' : undefined
+      },
+      {
+        skill: 'Documented Initiative Ownership',
+        category: 'Authenticity',
+        score: credibilityScore,
+        confidence: 88,
+        evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion.slice(0, 50)}...: ${e.assessmentVerdict}`),
+        gapIdentified: credibilityScore < 75 ? 'Be prepared to explain trade-offs and alternative solutions considered' : undefined
+      }
+    ];
 
     // Find first strong and vague answers for authentic quotes
     const strongAnswer = evidenceItems.find(e => e.assessmentVerdict === 'Strong Validation');
     const vagueAnswer = evidenceItems.find(e => e.assessmentVerdict === 'Superficial / Vague');
 
-    const primaryStrengthQuote = strongAnswer?.candidateQuote || candidateAnswers[0]?.text ? `"${candidateAnswers[0]?.text}"` : '"Demonstrated clear domain context and professional experience."';
-    const primaryWeaknessQuote = vagueAnswer?.candidateQuote || (candidateAnswers.length > 1 ? `"${candidateAnswers[candidateAnswers.length - 1]?.text}"` : 'N/A');
+    const primaryStrengthQuote = strongAnswer?.candidateQuote || (candidateAnswers[0]?.text ? `"${candidateAnswers[0].text}"` : '"Demonstrated clear domain context and professional experience."');
+    const primaryWeaknessQuote = vagueAnswer?.candidateQuote || (candidateAnswers.length > 1 ? `"${candidateAnswers[candidateAnswers.length - 1].text}"` : 'N/A');
 
     // Dynamic verification area based on domain
     let verificationTopic = 'Strategic Trade-offs & Execution Depth';
@@ -168,8 +221,9 @@ export class InterviewEvaluator {
     };
 
     return {
-      id: `rep-${Date.now()}`,
+      id: `rep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       sessionId,
+      version: reportVersion,
       candidateName: candidate.name,
       targetRole: config.roleTitle,
       seniority: config.seniority,
@@ -177,6 +231,7 @@ export class InterviewEvaluator {
       durationMinutesSpent: config.durationMinutes,
       totalTurns: history.length,
       overallScore,
+      roleReadiness,
       recommendation,
       executiveSummary: `${candidate.name} completed an adaptive professional competency interview for the ${config.seniority} ${config.roleTitle} profile across ${totalResponses} conversational turns. ${
         strongValidations >= 2
@@ -189,6 +244,7 @@ export class InterviewEvaluator {
         ...reportDimensions,
         roleCompetency: reportDimensions.technicalCompetency
       },
+      skillAssessments,
       strengths: [
         {
           title: strongValidations > 0 ? 'Verified Initiative Ownership' : 'Articulate Domain Understanding',

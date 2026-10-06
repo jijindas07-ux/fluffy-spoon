@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CandidateProfile, InterviewConfig, InterviewFocus, RigorLevel, SeniorityLevel } from '@/lib/types';
-import { Sliders, Clock, Target, Shield, Zap, Sparkles, ArrowRight } from 'lucide-react';
+import { CandidateProfile, InterviewConfig, InterviewFocus, JobDescription, RigorLevel, SeniorityLevel } from '@/lib/types';
+import { Sliders, Clock, Target, Shield, Zap, Sparkles, ArrowRight, FileText, Mic, MessageSquare } from 'lucide-react';
+import { JDParser } from '@/lib/engine/jdParser';
 
 interface InterviewSetupProps {
   profile: CandidateProfile;
@@ -18,6 +19,9 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
   const [durationMinutes, setDurationMinutes] = useState<number>(15);
   const [focusArea, setFocusArea] = useState<InterviewFocus>('Core Competencies & Claim Verification');
   const [rigorLevel, setRigorLevel] = useState<RigorLevel>('Rigorous & Challenging');
+  const [interviewMode, setInterviewMode] = useState<'voice' | 'text'>('voice');
+  const [showJDInput, setShowJDInput] = useState(false);
+  const [jobDescriptionText, setJobDescriptionText] = useState('');
 
   const seniorityOptions: SeniorityLevel[] = [
     'Junior', 'Mid-Level', 'Senior', 'Staff / Lead', 'Principal / Architect', 'Executive / Director'
@@ -25,8 +29,8 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
 
   const durationOptions = [
     { mins: 5, label: '5 Min Drill', desc: '4 adaptive turns • Quick claim verification' },
-    { mins: 15, label: '15 Min Standard', desc: '7 adaptive turns • Deep competency probe' },
-    { mins: 30, label: '30 Min Comprehensive', desc: '10 adaptive turns • Full professional assessment' }
+    { mins: 15, label: '15 Min Standard', desc: '6-8 turns across SRS stages • Full competency probe' },
+    { mins: 30, label: '30 Min Comprehensive', desc: '10-12 turns across all 11 stages • Deep evaluation' }
   ];
 
   const focusOptions: { title: InterviewFocus; desc: string }[] = [
@@ -45,12 +49,20 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    let parsedJD: JobDescription | undefined;
+    if (jobDescriptionText.trim()) {
+      parsedJD = JDParser.parseJobDescription(jobDescriptionText, roleTitle);
+    }
+
     onStartInterview({
       roleTitle,
       seniority,
       durationMinutes,
       focusArea,
-      rigorLevel
+      rigorLevel,
+      mode: interviewMode,
+      jobDescriptionText: jobDescriptionText.trim() || undefined,
+      parsedJD
     });
   };
 
@@ -58,7 +70,7 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
     <div style={{ maxWidth: '880px', margin: '0 auto', padding: '1.5rem 0 3.5rem' }}>
       <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <span className="badge badge-cyan" style={{ marginBottom: '0.4rem' }}>
-          Step 3 of 4 • Interview Calibration
+          Step 3 of 4 • Interview Calibration (SRS FR-006)
         </span>
         <h2 style={{ fontSize: '2.3rem', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff', marginBottom: '0.5rem' }}>
           Configure Interview Parameters
@@ -110,7 +122,7 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
                 onChange={(e) => setSeniority(e.target.value as SeniorityLevel)}
                 style={{
                   width: '100%',
-                  background: '#0e131f',
+                  background: 'rgba(0, 0, 0, 0.4)',
                   border: '1px solid var(--border-subtle)',
                   borderRadius: '8px',
                   padding: '0.75rem 1rem',
@@ -119,20 +131,108 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
                   outline: 'none'
                 }}
               >
-                {seniorityOptions.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                {seniorityOptions.map((opt) => (
+                  <option key={opt} value={opt} style={{ background: '#0f172a', color: '#fff' }}>
+                    {opt}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
+
+          {/* Mode Selector */}
+          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.6rem', fontWeight: 600 }}>
+              Interview Interaction Mode
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div
+                onClick={() => setInterviewMode('voice')}
+                style={{
+                  padding: '0.85rem',
+                  borderRadius: '8px',
+                  border: `1.5px solid ${interviewMode === 'voice' ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
+                  background: interviewMode === 'voice' ? 'rgba(6,182,212,0.1)' : 'rgba(0,0,0,0.2)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem'
+                }}
+              >
+                <Mic size={18} color={interviewMode === 'voice' ? 'var(--accent-cyan)' : 'var(--text-muted)'} />
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>Realtime Voice & Audio</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Streamed STT/TTS with live speech synthesis</div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setInterviewMode('text')}
+                style={{
+                  padding: '0.85rem',
+                  borderRadius: '8px',
+                  border: `1.5px solid ${interviewMode === 'text' ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
+                  background: interviewMode === 'text' ? 'rgba(6,182,212,0.1)' : 'rgba(0,0,0,0.2)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.65rem'
+                }}
+              >
+                <MessageSquare size={18} color={interviewMode === 'text' ? 'var(--accent-cyan)' : 'var(--text-muted)'} />
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#fff' }}>Text Conversation</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Low-bandwidth conversational text mode</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Optional Job Description Accordion */}
+          <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border-subtle)' }}>
+            <div
+              onClick={() => setShowJDInput(!showJDInput)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileText size={16} color="#38bdf8" />
+                <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#38bdf8' }}>
+                  {showJDInput ? '▼ Hide Target Job Description' : '▶ Map to Target Job Description (Optional - FR-005)'}
+                </span>
+              </div>
+              <span className="badge badge-indigo" style={{ fontSize: '0.72rem' }}>P1 Requirement</span>
+            </div>
+
+            {showJDInput && (
+              <div style={{ marginTop: '0.85rem' }}>
+                <textarea
+                  rows={4}
+                  placeholder="Paste target Job Description text here. The engine will extract required/preferred skills and role themes to align interview questions directly to this JD."
+                  value={jobDescriptionText}
+                  onChange={(e) => setJobDescriptionText(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(0, 0, 0, 0.4)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    color: '#ffffff',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                    resize: 'vertical'
+                  }}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Interview Duration */}
+        {/* Duration & Rigor */}
         <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Clock size={18} color="var(--accent-cyan)" />
+            <Clock size={18} color="#38bdf8" />
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
-              Interview Duration & Depth
+              Interview Duration & Pacing
             </h3>
           </div>
 
@@ -141,115 +241,112 @@ export const InterviewSetup: React.FC<InterviewSetupProps> = ({ profile, onStart
               <div
                 key={opt.mins}
                 onClick={() => setDurationMinutes(opt.mins)}
-                className="glass-card"
                 style={{
-                  padding: '1.15rem',
+                  padding: '1rem',
+                  borderRadius: '10px',
+                  border: `1.5px solid ${durationMinutes === opt.mins ? 'var(--accent-cyan)' : 'var(--border-subtle)'}`,
+                  background: durationMinutes === opt.mins ? 'rgba(6, 182, 212, 0.1)' : 'rgba(0, 0, 0, 0.25)',
                   cursor: 'pointer',
-                  borderRadius: '12px',
-                  border: durationMinutes === opt.mins ? '2px solid var(--primary)' : '1px solid var(--border-subtle)',
-                  background: durationMinutes === opt.mins ? 'rgba(99, 102, 241, 0.12)' : 'rgba(0, 0, 0, 0.25)',
                   transition: 'all 0.2s ease'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span style={{ fontWeight: 700, color: '#ffffff', fontSize: '1rem' }}>{opt.label}</span>
-                  {durationMinutes === opt.mins && <span className="badge badge-indigo" style={{ fontSize: '0.65rem' }}>Selected</span>}
+                <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem', marginBottom: '0.35rem' }}>
+                  {opt.label}
                 </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   {opt.desc}
-                </p>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Interview Focus Area */}
+        {/* Focus Area */}
         <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Zap size={18} color="var(--accent-emerald)" />
+            <Sliders size={18} color="#c084fc" />
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
-              Primary Interview Focus
+              Primary Evaluation Focus
             </h3>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {focusOptions.map((f) => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem' }}>
+            {focusOptions.map((opt) => (
               <div
-                key={f.title}
-                onClick={() => setFocusArea(f.title)}
+                key={opt.title}
+                onClick={() => setFocusArea(opt.title)}
                 style={{
-                  padding: '0.95rem 1.15rem',
+                  padding: '1rem',
                   borderRadius: '10px',
+                  border: `1.5px solid ${focusArea === opt.title ? 'var(--accent-purple)' : 'var(--border-subtle)'}`,
+                  background: focusArea === opt.title ? 'rgba(168, 85, 247, 0.1)' : 'rgba(0, 0, 0, 0.25)',
                   cursor: 'pointer',
-                  border: focusArea === f.title ? '1px solid var(--border-active)' : '1px solid var(--border-subtle)',
-                  background: focusArea === f.title ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.02)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '1rem',
                   transition: 'all 0.2s ease'
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#ffffff', marginBottom: '0.2rem' }}>
-                    {f.title}
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    {f.desc}
-                  </div>
+                <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.9rem', marginBottom: '0.35rem' }}>
+                  {opt.title}
                 </div>
-                {focusArea === f.title && (
-                  <span className="badge badge-indigo" style={{ fontSize: '0.68rem', flexShrink: 0 }}>Active Focus</span>
-                )}
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {opt.desc}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* AI Rigor Level */}
-        <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '2.5rem' }}>
+        {/* Rigor Level */}
+        <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-            <Shield size={18} color="var(--accent-rose)" />
+            <Shield size={18} color="#f43f5e" />
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
-              Interviewer Tone & Rigor
+              Questioning Rigor & Standard
             </h3>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-            {rigorOptions.map((r) => (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.85rem' }}>
+            {rigorOptions.map((opt) => (
               <div
-                key={r.title}
-                onClick={() => setRigorLevel(r.title)}
-                className="glass-card"
+                key={opt.title}
+                onClick={() => setRigorLevel(opt.title)}
                 style={{
-                  padding: '1.15rem',
+                  padding: '1.1rem',
+                  borderRadius: '10px',
+                  border: `1.5px solid ${rigorLevel === opt.title ? 'var(--accent-rose)' : 'var(--border-subtle)'}`,
+                  background: rigorLevel === opt.title ? 'rgba(244, 63, 94, 0.08)' : 'rgba(0, 0, 0, 0.25)',
                   cursor: 'pointer',
-                  border: rigorLevel === r.title ? '2px solid var(--primary)' : '1px solid var(--border-subtle)',
-                  background: rigorLevel === r.title ? 'rgba(99, 102, 241, 0.12)' : 'rgba(0, 0, 0, 0.25)'
+                  transition: 'all 0.2s ease'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
-                  <span style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.95rem' }}>{r.title}</span>
-                  <span className={`badge ${r.badge}`} style={{ fontSize: '0.62rem' }}>
-                    {r.title === rigorLevel ? 'Active' : 'Tone'}
-                  </span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                  <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.92rem' }}>{opt.title}</div>
+                  <span className={`badge ${opt.badge}`} style={{ fontSize: '0.68rem' }}>Standard</span>
                 </div>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                  {r.desc}
-                </p>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  {opt.desc}
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Submit Actions */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <button type="button" onClick={onBack} className="btn btn-secondary" style={{ flex: 1, minWidth: '130px' }}>
-            Back to Profile
+        {/* Action Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          <button
+            type="button"
+            onClick={onBack}
+            className="btn btn-secondary"
+            style={{ padding: '0.85rem 1.75rem' }}
+          >
+            ← Back to Profile
           </button>
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.85rem 1.8rem', fontSize: '1rem', borderRadius: '12px', flex: 2, minWidth: '220px' }}>
-            <Sparkles size={18} />
-            <span>Launch Live Interview</span>
+
+          <button
+            type="submit"
+            className="btn btn-primary glow-cyan"
+            style={{ padding: '0.85rem 2.25rem', fontSize: '1.02rem', gap: '0.65rem' }}
+          >
+            Launch Calibrated Interview
             <ArrowRight size={18} />
           </button>
         </div>

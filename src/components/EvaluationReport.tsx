@@ -1,16 +1,26 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { EvaluationReport as EvaluationReportType } from '@/lib/types';
-import { Award, CheckCircle2, AlertTriangle, ShieldCheck, FileText, ArrowRight, Printer, Share2, Sparkles, TrendingUp, HelpCircle } from 'lucide-react';
+import {
+  Award, CheckCircle2, AlertTriangle, ShieldCheck, FileText, ArrowRight,
+  Printer, Share2, Sparkles, TrendingUp, HelpCircle, RotateCcw, MessageSquarePlus, DollarSign, Cpu, Clock
+} from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface EvaluationReportProps {
   report: EvaluationReportType;
   onRestart: () => void;
+  onRetakePractice?: (weakTopics: string[]) => void;
 }
 
-export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, onRestart }) => {
+export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, onRestart, onRetakePractice }) => {
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackFlag, setFeedbackFlag] = useState<string>('other');
+  const [feedbackComments, setFeedbackComments] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
   useEffect(() => {
     if (report.overallScore >= 75) {
       try {
@@ -19,9 +29,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
           spread: 70,
           origin: { y: 0.6 }
         });
-      } catch (e) {
-        // Safe fallback if canvas is not initialized
-      }
+      } catch (e) {}
     }
   }, [report.overallScore]);
 
@@ -33,6 +41,19 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
       case 'Leaning Hire':
         return 'badge-indigo';
       case 'Needs Follow-Up':
+        return 'badge-amber';
+      default:
+        return 'badge-rose';
+    }
+  };
+
+  const getReadinessBadge = (readiness?: string) => {
+    switch (readiness) {
+      case 'Immediate Match':
+        return 'badge-emerald';
+      case 'Ready with Minor Onboarding':
+        return 'badge-cyan';
+      case 'Needs Targeted Upskilling':
         return 'badge-amber';
       default:
         return 'badge-rose';
@@ -56,24 +77,74 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
     window.print();
   };
 
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await fetch('/api/v1/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          interview_id: report.sessionId,
+          rating: feedbackRating,
+          flag_type: feedbackFlag,
+          comments: feedbackComments
+        })
+      });
+      setFeedbackSubmitted(true);
+      setTimeout(() => setShowFeedbackModal(false), 1500);
+    } catch (err) {
+      console.warn('Feedback submit error:', err);
+    }
+  };
+
   return (
     <div style={{ maxWidth: '1040px', margin: '0 auto', padding: '1.5rem 0.75rem 4rem' }}>
       {/* Top action header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <span className="badge badge-emerald" style={{ marginBottom: '0.4rem' }}>
-            Evaluation Complete • Evidence Verified
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+            <span className="badge badge-emerald">
+              Evaluation Complete (SRS FR-015)
+            </span>
+            {report.roleReadiness && (
+              <span className={`badge ${getReadinessBadge(report.roleReadiness)}`}>
+                Readiness: {report.roleReadiness}
+              </span>
+            )}
+          </div>
           <h2 style={{ fontSize: 'clamp(1.4rem, 5vw, 2.2rem)', fontWeight: 800, letterSpacing: '-0.02em', color: '#ffffff' }}>
             Candidate Credibility & Assessment Report
           </h2>
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {/* Targeted Retake Practice (FR-016) */}
+          {onRetakePractice && report.weaknesses.length > 0 && (
+            <button
+              onClick={() => onRetakePractice(report.weaknesses.map(w => w.title))}
+              className="btn btn-secondary glow-cyan"
+              style={{ padding: '0.6rem 1.15rem', borderColor: 'var(--accent-cyan)' }}
+            >
+              <RotateCcw size={16} color="var(--accent-cyan)" />
+              <span>Targeted Retake (FR-016)</span>
+            </button>
+          )}
+
+          {/* Feedback (FR-020) */}
+          <button
+            onClick={() => setShowFeedbackModal(true)}
+            className="btn btn-secondary"
+            style={{ padding: '0.6rem 1rem' }}
+          >
+            <MessageSquarePlus size={16} />
+            <span>Provide Feedback (FR-020)</span>
+          </button>
+
           <button onClick={handlePrint} className="btn btn-secondary" style={{ padding: '0.6rem 1.15rem' }}>
             <Printer size={16} />
             <span>Export / Print</span>
           </button>
+
           <button onClick={onRestart} className="btn btn-primary" style={{ padding: '0.6rem 1.35rem' }}>
             <span>Start New Candidate</span>
             <ArrowRight size={16} />
@@ -85,7 +156,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
       <div className="glass-card" style={{ padding: '2rem', marginBottom: '1.5rem', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>
                 {report.candidateName}
               </span>
@@ -94,234 +165,312 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
               </span>
             </div>
             <div style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)', marginBottom: '1rem', fontWeight: 600 }}>
-              {report.seniority} {report.targetRole} • {report.totalTurns} Multi-Turn Questions
+              {report.seniority} {report.targetRole} • {report.totalTurns} Multi-Turn Question Cycles
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.94rem', lineHeight: 1.6 }}>
               {report.executiveSummary}
             </p>
           </div>
 
-          {/* Overall Score Dial */}
-          <div style={{
-            background: 'rgba(0, 0, 0, 0.4)',
-            border: '1px solid var(--border-subtle)',
-            borderRadius: '16px',
-            padding: '1.5rem',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-              Overall Evaluation Score
-            </div>
+          {/* Score Circle & Gauge */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
             <div style={{
-              fontSize: '3.8rem',
-              fontWeight: 800,
-              fontFamily: 'var(--font-mono)',
-              lineHeight: 1,
-              background: report.overallScore >= 80
-                ? 'linear-gradient(135deg, #10b981 0%, #06b6d4 100%)'
-                : 'linear-gradient(135deg, #6366f1 0%, #f59e0b 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              marginBottom: '0.5rem'
+              width: '130px', height: '130px', borderRadius: '50%',
+              border: '6px solid var(--accent-cyan)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              background: 'radial-gradient(circle, rgba(6,182,212,0.15) 0%, rgba(0,0,0,0) 70%)',
+              boxShadow: '0 0 25px rgba(6,182,212,0.25)',
+              marginBottom: '0.75rem'
             }}>
-              {report.overallScore}<span style={{ fontSize: '1.8rem', color: 'var(--text-muted)' }}>/100</span>
+              <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>
+                {report.overallScore}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Score / 100
+              </span>
             </div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-faint)' }}>
-              Calibrated against {report.seniority} Professional Benchmarks
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ffffff' }}>
+              Overall Readiness Rating
             </div>
           </div>
         </div>
       </div>
 
-      {/* 5 Core Competency Dimensions Breakdown */}
-      <div style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <TrendingUp size={18} color="var(--accent-cyan)" />
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>
-            5-Dimension Competency & Credibility Breakdown
-          </h3>
+      {/* AI Telemetry & Cost Ledger Card (FR-019 / NFR-011) */}
+      {report.aiUsageSummary && (
+        <div className="glass-card" style={{ padding: '1.25rem 1.75rem', marginBottom: '1.5rem', background: 'rgba(15, 23, 42, 0.6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Cpu size={16} color="var(--accent-cyan)" />
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>
+                AI Telemetry & Usage Ledger (FR-019)
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              <div>
+                <strong>Tokens:</strong> {report.aiUsageSummary.totalTokens.toLocaleString()}
+              </div>
+              <div>
+                <strong>Avg Latency:</strong> {Math.round(report.aiUsageSummary.totalLatencyMs / (report.totalTurns || 1))}ms
+              </div>
+              <div>
+                <strong>Est. Cost:</strong> ${report.aiUsageSummary.totalCostUsd} USD
+              </div>
+            </div>
+          </div>
         </div>
+      )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
-          {Object.entries(report.dimensions).map(([key, dim]) => (
+      {/* 5 Core Competency Dimensions Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        {Object.entries(report.dimensions).map(([key, dim]) => {
+          if (!dim || key === 'roleCompetency') return null;
+          return (
             <div key={key} className="glass-card" style={{ padding: '1.35rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>{dim.label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#ffffff' }}>
+                  {dim.label}
+                </span>
                 <span style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontWeight: 700,
-                  fontSize: '1.1rem',
-                  color: dim.score >= 85 ? '#6ee7b7' : dim.score >= 70 ? '#a5b4fc' : '#fda4af'
+                  fontSize: '0.92rem', fontWeight: 800,
+                  color: dim.score >= 80 ? '#10b981' : dim.score >= 65 ? '#f59e0b' : '#f43f5e'
                 }}>
                   {dim.score}/100
                 </span>
               </div>
-
-              {/* Progress bar */}
-              <div style={{ width: '100%', height: '6px', background: 'rgba(255, 255, 255, 0.08)', borderRadius: '999px', overflow: 'hidden', marginBottom: '0.75rem' }}>
-                <div style={{
-                  width: `${dim.score}%`,
-                  height: '100%',
-                  background: dim.score >= 85 ? 'linear-gradient(90deg, #10b981, #06b6d4)' : 'linear-gradient(90deg, #6366f1, #818cf8)'
-                }} />
+              <div className="progress-bar-container" style={{ height: '6px', marginBottom: '0.75rem' }}>
+                <div
+                  className="progress-bar-fill"
+                  style={{
+                    width: `${dim.score}%`,
+                    background: dim.score >= 80 ? 'linear-gradient(90deg, #10b981, #06b6d4)' : dim.score >= 65 ? 'linear-gradient(90deg, #f59e0b, #eab308)' : 'linear-gradient(90deg, #ef4444, #f43f5e)'
+                  }}
+                />
               </div>
-
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
                 {dim.summary}
               </p>
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
-      {/* Evidence-Based Claim Verification Table (Crucial Feature) */}
-      <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '2rem', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
-          <ShieldCheck size={20} color="var(--accent-emerald)" />
-          <div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>
-              Evidence-Based Claim Verification (Quote Citations)
+      {/* Granular Skill Assessments Card (FR-011) */}
+      {report.skillAssessments && report.skillAssessments.length > 0 && (
+        <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <Award size={18} color="var(--accent-purple)" />
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
+              Granular Skill Assessments & Confidence (FR-011)
             </h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              Verifiable mappings comparing resume claims against candidate direct verbal answers during adaptive questioning.
-            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
+            {report.skillAssessments.map((sa, idx) => (
+              <div key={idx} style={{ padding: '1rem', borderRadius: '8px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{sa.skill}</span>
+                  <span className="badge badge-emerald" style={{ fontSize: '0.72rem' }}>{sa.score}/100</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginBottom: '0.35rem' }}>
+                  Category: {sa.category} • Eval Confidence: {sa.confidence}%
+                </div>
+                {sa.gapIdentified && (
+                  <div style={{ fontSize: '0.78rem', color: '#fbbf24', marginTop: '0.35rem' }}>
+                    ⚠️ {sa.gapIdentified}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
+      )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {report.evidenceItems.map((item, idx) => (
-            <div
-              key={item.id || idx}
-              style={{
-                background: 'rgba(0, 0, 0, 0.35)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '12px',
-                padding: '1.25rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.65rem'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Target Claim #{idx + 1}
-                </div>
-                <span className={`badge ${getVerdictBadge(item.assessmentVerdict)}`} style={{ fontSize: '0.7rem' }}>
-                  {item.assessmentVerdict}
-                </span>
+      {/* Strengths & Growth Areas */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+        {/* Strengths */}
+        <div className="glass-card" style={{ padding: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <CheckCircle2 size={18} color="#10b981" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+              Observed Strengths & Validation
+            </h3>
+          </div>
+          {report.strengths.map((str, idx) => (
+            <div key={idx} style={{ marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: idx < report.strengths.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '0.35rem' }}>
+                {str.title}
               </div>
-
-              <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff', fontFamily: 'var(--font-mono)' }}>
-                "{item.claimAssertion}"
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                {str.description}
               </div>
-
-              {/* Verbatim Candidate Quote */}
-              <div style={{
-                background: 'rgba(99, 102, 241, 0.08)',
-                borderLeft: '3px solid var(--primary)',
-                padding: '0.6rem 0.85rem',
-                borderRadius: '4px',
-                fontSize: '0.86rem',
-                color: '#c7d2fe',
-                lineHeight: 1.45,
-                fontStyle: 'italic'
-              }}>
-                Candidate Answer: {item.candidateQuote}
+              <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', fontStyle: 'italic', background: 'rgba(6,182,212,0.06)', padding: '0.5rem', borderRadius: '6px' }}>
+                "{str.quote.replace(/"/g, '')}"
               </div>
+            </div>
+          ))}
+        </div>
 
-              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                <strong>AI Reasoning:</strong> {item.reasoning}
+        {/* Weaknesses / Gaps */}
+        <div className="glass-card" style={{ padding: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <AlertTriangle size={18} color="#f59e0b" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+              Development Gaps & Probing Areas
+            </h3>
+          </div>
+          {report.weaknesses.map((w, idx) => (
+            <div key={idx} style={{ marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: idx < report.weaknesses.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '0.35rem' }}>
+                {w.title}
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                {w.description}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#fbbf24', fontStyle: 'italic', background: 'rgba(245,158,11,0.06)', padding: '0.5rem', borderRadius: '6px' }}>
+                "{w.quote.replace(/"/g, '')}"
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Strengths & Weaknesses Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* Strengths */}
-        <div className="glass-card" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6ee7b7', fontWeight: 700, marginBottom: '1rem' }}>
-            <CheckCircle2 size={18} />
-            <span>Key Demonstrated Strengths</span>
+      {/* Suggested Follow-ups for Next Round */}
+      {report.verificationAreas && report.verificationAreas.length > 0 && (
+        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <HelpCircle size={18} color="#38bdf8" />
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+              Recommended Next-Round Follow-up Inquiries
+            </h3>
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {report.strengths.map((st, i) => (
-              <div key={i} style={{ borderBottom: i < report.strengths.length - 1 ? '1px solid var(--border-subtle)' : 'none', paddingBottom: '0.75rem' }}>
-                <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.92rem', marginBottom: '0.2rem' }}>
-                  {st.title}
-                </div>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.45, marginBottom: '0.4rem' }}>
-                  {st.description}
-                </p>
-                <div style={{ fontSize: '0.75rem', color: '#a5b4fc', fontStyle: 'italic' }}>
-                  Evidence: {st.quote}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Weaknesses / Growth Areas */}
-        <div className="glass-card" style={{ padding: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fda4af', fontWeight: 700, marginBottom: '1rem' }}>
-            <AlertTriangle size={18} />
-            <span>Areas for Professional Growth</span>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {report.weaknesses.map((wk, i) => (
-              <div key={i} style={{ borderBottom: i < report.weaknesses.length - 1 ? '1px solid var(--border-subtle)' : 'none', paddingBottom: '0.75rem' }}>
-                <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '0.92rem', marginBottom: '0.2rem' }}>
-                  {wk.title}
-                </div>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                  {wk.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Areas Requiring Further Verification & Suggested Onsite Questions */}
-      <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '2.5rem', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <HelpCircle size={18} color="var(--accent-amber)" />
-          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
-            Areas Requiring Further Verification (Recommended Follow-Ups)
-          </h3>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {report.verificationAreas.map((va, idx) => (
-            <div key={idx} style={{ background: 'rgba(0, 0, 0, 0.3)', padding: '1rem 1.25rem', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
-              <div style={{ fontWeight: 700, color: '#fcd34d', fontSize: '0.92rem', marginBottom: '0.25rem' }}>
+            <div key={idx} style={{ padding: '1rem', borderRadius: '8px', background: 'rgba(0, 0, 0, 0.3)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff', marginBottom: '0.25rem' }}>
                 {va.area}
               </div>
               <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                 {va.issueFound}
               </div>
-              <div style={{ fontSize: '0.82rem', color: '#c7d2fe', background: 'rgba(99, 102, 241, 0.1)', padding: '0.5rem 0.75rem', borderRadius: '6px' }}>
-                💡 <strong>Suggested On-Site Question:</strong> "{va.suggestedOnsiteQuestion}"
+              <div style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', fontWeight: 600 }}>
+                💡 "{va.suggestedOnsiteQuestion}"
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Candidate Resume Claim Grounding Table (FR-004) */}
+      <div className="glass-card" style={{ padding: '1.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+          <ShieldCheck size={18} color="#10b981" />
+          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff' }}>
+            Resume Claim Grounding & Verification Ledger (FR-004)
+          </h3>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+          {report.evidenceItems.map((item, idx) => (
+            <div key={idx} style={{ padding: '1rem', borderRadius: '8px', background: 'rgba(0, 0, 0, 0.35)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff' }}>
+                  Claim {idx + 1}: {item.claimAssertion}
+                </span>
+                <span className={`badge ${getVerdictBadge(item.assessmentVerdict)}`} style={{ fontSize: '0.72rem' }}>
+                  {item.assessmentVerdict}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+                {item.reasoning}
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>
+                Candidate Verbal Quote: {item.candidateQuote}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Footer Actions */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <button onClick={onRestart} className="btn btn-primary" style={{ padding: '0.85rem 2rem', fontSize: '1rem', borderRadius: '12px' }}>
-          <Sparkles size={18} />
-          <span>Conduct Another Interview</span>
-        </button>
-      </div>
+      {/* Human Feedback Modal (FR-020) */}
+      {showFeedbackModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem'
+        }}>
+          <div className="glass-card" style={{ maxWidth: '520px', width: '100%', padding: '2rem' }}>
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>
+              Candidate Feedback (FR-020)
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              Flag inaccurate AI feedback or rate this interview session for quality reviews.
+            </p>
+
+            {feedbackSubmitted ? (
+              <div style={{ textAlign: 'center', padding: '1.5rem', color: '#10b981' }}>
+                <CheckCircle2 size={36} style={{ margin: '0 auto 0.5rem' }} />
+                <div>Thank you! Your feedback has been recorded for evaluation datasets.</div>
+              </div>
+            ) : (
+              <form onSubmit={handleFeedbackSubmit}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                    Session Rating (1 to 5)
+                  </label>
+                  <select
+                    value={feedbackRating}
+                    onChange={(e) => setFeedbackRating(Number(e.target.value))}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#fff' }}
+                  >
+                    <option value={5}>5 - Outstanding & Accurate</option>
+                    <option value={4}>4 - Very Good</option>
+                    <option value={3}>3 - Average</option>
+                    <option value={2}>2 - Inaccurate Probing</option>
+                    <option value={1}>1 - Poor / Glitchy</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                    Feedback Category
+                  </label>
+                  <select
+                    value={feedbackFlag}
+                    onChange={(e) => setFeedbackFlag(e.target.value)}
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#fff' }}
+                  >
+                    <option value="other">General Feedback</option>
+                    <option value="scoring_inaccurate">Scoring Inaccurate</option>
+                    <option value="question_irrelevant">Question Irrelevant to Resume</option>
+                    <option value="audio_glitch">Audio / Voice Glitch</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                    Comments & Detailed Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={feedbackComments}
+                    onChange={(e) => setFeedbackComments(e.target.value)}
+                    placeholder="Provide specific notes regarding the questions or scoring..."
+                    style={{ width: '100%', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--border-subtle)', borderRadius: '8px', padding: '0.65rem', color: '#fff' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                  <button type="button" onClick={() => setShowFeedbackModal(false)} className="btn btn-secondary">
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-primary glow-cyan">
+                    Submit Feedback
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

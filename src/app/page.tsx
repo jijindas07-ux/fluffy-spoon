@@ -42,7 +42,6 @@ function HomeInner() {
         const savedSession: InterviewSession = JSON.parse(savedSessionJson);
         const savedCandidate: CandidateProfile = JSON.parse(savedCandidateJson);
 
-        // Only restore if the session was actually in-progress (not completed)
         if (savedSession && savedSession.status === 'in_progress' && savedSession.turns.length > 0) {
           console.log(`[RESTORE] Found in-progress session ${savedSession.id} for ${savedCandidate.name}. Restoring...`);
           setCandidateProfile(savedCandidate);
@@ -92,7 +91,6 @@ function HomeInner() {
     setCandidateProfile(profile);
     setInterviewSession(null);
     setEvaluationReport(null);
-    // Clear any previous persisted sessions to avoid stale data
     localStorage.removeItem(SESSION_PERSIST_KEY);
     localStorage.removeItem(CANDIDATE_PERSIST_KEY);
     setCurrentStep('profile');
@@ -154,7 +152,6 @@ function HomeInner() {
       const data = await res.json();
       if (data.success && data.report) {
         setEvaluationReport(data.report);
-        // Clear persisted session once completed
         localStorage.removeItem(SESSION_PERSIST_KEY);
         localStorage.removeItem(CANDIDATE_PERSIST_KEY);
         setCurrentStep('report');
@@ -166,18 +163,35 @@ function HomeInner() {
     }
   };
 
+  // Targeted Retake Practice (FR-016)
+  const handleRetakePractice = async (weakTopics: string[]) => {
+    if (!candidateProfile || !interviewSession) return;
+    setIsLoading(true);
+    try {
+      const retakeConfig: InterviewConfig = {
+        ...interviewSession.config,
+        durationMinutes: 10,
+        retakeOfSessionId: interviewSession.id,
+        targetedTopics: weakTopics
+      };
+      await handleStartInterview(retakeConfig);
+    } catch (err) {
+      console.error('Retake error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleReset = () => {
     console.log(`[STATE] Global application reset`);
     setCurrentStep('landing');
     setCandidateProfile(null);
     setInterviewSession(null);
     setEvaluationReport(null);
-    // Clear persisted state
     localStorage.removeItem(SESSION_PERSIST_KEY);
     localStorage.removeItem(CANDIDATE_PERSIST_KEY);
   };
 
-  // Update local session state when LiveInterview updates turns via API
   const handleSessionUpdate = (updatedSession: InterviewSession) => {
     setInterviewSession(updatedSession);
   };
@@ -231,6 +245,7 @@ function HomeInner() {
             key={evaluationReport.id}
             report={evaluationReport}
             onRestart={handleReset}
+            onRetakePractice={handleRetakePractice}
           />
         )}
       </main>
@@ -245,7 +260,7 @@ function HomeInner() {
         color: 'var(--text-faint)'
       }}>
         <div className="container">
-          <p>© 2026 VerveAI Universal Adaptive Interview Platform · Powered by LLM & Cognitive Semantic Engine · <a href="/dashboard" style={{ color: 'var(--text-faint)', textDecoration: 'none' }}>Dashboard</a> · <a href="/admin" style={{ color: 'var(--text-faint)', textDecoration: 'none' }}>Admin</a></p>
+          <p>© 2026 Alphagrew AI Face-to-Face Interviewer · Developer Baseline AG-AII-SRS-001 · <a href="/dashboard" style={{ color: 'var(--text-faint)', textDecoration: 'none' }}>Dashboard</a> · <a href="/admin" style={{ color: 'var(--text-faint)', textDecoration: 'none' }}>Admin</a></p>
         </div>
       </footer>
     </div>

@@ -8,7 +8,7 @@ import { validateToken, extractTokenFromRequest } from '@/lib/auth/authUtils';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { sessionId, answerText, clientLLMConfig, userId: bodyUserId } = body;
+    const { sessionId, answerText, clientLLMConfig, userId: bodyUserId, sttConfidence, audioPath, durationMs } = body;
 
     if (!sessionId || !answerText?.trim()) {
       return NextResponse.json({ success: false, error: 'Session ID and non-empty answer required' }, { status: 400 });
@@ -45,13 +45,19 @@ export async function POST(req: NextRequest) {
       speaker: 'candidate',
       text: answerText.trim(),
       timestamp: Date.now(),
+      stage: session.currentStage,
       anchoredClaimId: activeClaim?.id,
       claimDepthLevel: session.currentClaimDepth,
-      detectedEntities: entities
+      detectedEntities: entities,
+      audioPath,
+      sttConfidence: sttConfidence ?? 0.95
     };
     session.turns.push(candidateTurn);
 
-    // Call AI service to generate next adaptive follow-up
+    // Calculate elapsed time
+    const elapsedSeconds = Math.round((Date.now() - session.startedAt) / 1000);
+
+    // Call AI service to generate next adaptive follow-up across SRS stages
     const aiService = getAIService();
     const nextQResult = await aiService.generateQuestion(
       session.candidate,
@@ -59,7 +65,12 @@ export async function POST(req: NextRequest) {
       session.turns,
       session.currentClaimIndex,
       session.currentClaimDepth,
-      llmConfig
+      llmConfig,
+      session.currentStage,
+      session.plan,
+      elapsedSeconds,
+      sttConfidence,
+      session.id
     );
 
     // Add AI turn
@@ -68,12 +79,32 @@ export async function POST(req: NextRequest) {
       speaker: 'ai',
       text: nextQResult.question,
       timestamp: Date.now(),
+      stage: nextQResult.stage,
       anchoredClaimId: nextQResult.anchoredClaimId,
       claimDepthLevel: nextQResult.claimDepthLevel,
       detectedEntities: nextQResult.detectedEntities,
       evaluationNote: nextQResult.investigationContext
     };
     session.turns.push(aiTurn);
+
+    // Update stage history and state machine
+    if (nextQResult.stage !== session.currentStage) {
+      const currentHistoryEntry = session.stageHistory.find(h => h.stage === session.currentStage && !h.exitedAt);
+      if (currentHistoryEntry) {
+        currentHistoryEntry.exitedAt = Date.now();
+      }
+      session.stageHistory.push({
+        stage: nextQResult.stage,
+        enteredAt: Date.now(),
+        turnCount: 1
+      });
+      session.currentStage = nextQResult.stage;
+    } else {
+      const currentHistoryEntry = session.stageHistory.find(h => h.stage === session.currentStage && !h.exitedAt);
+      if (currentHistoryEntry) {
+        currentHistoryEntry.turnCount += 1;
+      }
+    }
 
     // Update depth and claim index
     session.currentClaimDepth = nextQResult.claimDepthLevel;
@@ -84,18 +115,21 @@ export async function POST(req: NextRequest) {
 
     if (nextQResult.isSessionComplete) {
       session.status = 'completed';
+      session.completedAt = Date.now();
     }
 
-    await memoryStore.saveSession(session, userId || undefined);
+    await memoryStore.saveSession(session, userId || undefined, session.tenantId);
 
     return NextResponse.json({
       success: true,
       nextQuestion: nextQResult.question,
+      stage: nextQResult.stage,
       anchoredClaimId: nextQResult.anchoredClaimId,
       claimDepthLevel: nextQResult.claimDepthLevel,
       investigationContext: nextQResult.investigationContext,
       isSessionComplete: nextQResult.isSessionComplete,
-      turns: session.turns
+      turns: session.turns,
+      lowConfidenceTriggered: nextQResult.lowConfidenceTriggered
     });
   } catch (error: any) {
     console.error('Error in interview respond route:', error);

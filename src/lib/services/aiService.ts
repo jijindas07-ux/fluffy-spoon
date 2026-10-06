@@ -1,7 +1,9 @@
-import { CandidateProfile, ConversationTurn, EvaluationReport, InterviewConfig } from '../types';
+import { CandidateProfile, ConversationTurn, EvaluationReport, InterviewConfig, InterviewPlan, InterviewStage } from '../types';
 import { AdaptiveInterviewEngine, DynamicQuestionResult } from '../engine/adaptiveEngine';
 import { InterviewEvaluator } from '../engine/evaluator';
 import { LLMService, LLMConfig } from './llmService';
+import { TelemetryService } from '../engine/telemetry';
+import { memoryStore } from '../db/client';
 
 export interface AIServiceAdapter {
   generateQuestion(
@@ -10,7 +12,12 @@ export interface AIServiceAdapter {
     history: ConversationTurn[],
     currentClaimIndex: number,
     currentClaimDepth: number,
-    clientLLMConfig?: Partial<LLMConfig>
+    clientLLMConfig?: Partial<LLMConfig>,
+    currentStage?: InterviewStage,
+    plan?: InterviewPlan,
+    elapsedSeconds?: number,
+    sttConfidence?: number,
+    sessionId?: string
   ): Promise<DynamicQuestionResult>;
 
   evaluateInterview(
@@ -18,7 +25,8 @@ export interface AIServiceAdapter {
     config: InterviewConfig,
     history: ConversationTurn[],
     sessionId: string,
-    clientLLMConfig?: Partial<LLMConfig>
+    clientLLMConfig?: Partial<LLMConfig>,
+    reportVersion?: number
   ): Promise<EvaluationReport>;
 }
 
@@ -29,8 +37,15 @@ export class UnifiedAIService implements AIServiceAdapter {
     history: ConversationTurn[],
     currentClaimIndex: number,
     currentClaimDepth: number,
-    clientLLMConfig?: Partial<LLMConfig>
+    clientLLMConfig?: Partial<LLMConfig>,
+    currentStage: InterviewStage = 'INTRO',
+    plan?: InterviewPlan,
+    elapsedSeconds: number = 0,
+    sttConfidence?: number,
+    sessionId?: string
   ): Promise<DynamicQuestionResult> {
+    const startTime = Date.now();
+
     // 1. Try LLM if configured via client or environment
     const effectiveLLM = LLMService.getEffectiveConfig(clientLLMConfig);
     if (effectiveLLM) {
@@ -44,37 +59,56 @@ export class UnifiedAIService implements AIServiceAdapter {
           effectiveLLM
         );
         if (llmResult) {
-          return llmResult;
+          const latencyMs = Date.now() - startTime;
+          const usage = TelemetryService.createUsageRecord(
+            'question_gen',
+            effectiveLLM.provider as any,
+            effectiveLLM.model || 'gemini-3.6-flash',
+            800 + (history.length * 150),
+            120,
+            latencyMs,
+            sessionId,
+            config.tenantId
+          );
+          await memoryStore.recordAIUsage(usage);
+
+          return {
+            ...llmResult,
+            stage: currentStage
+          };
         }
       } catch (err) {
         console.warn('LLM Generation error, gracefully falling back to Adaptive Cognitive Engine:', err);
       }
     }
 
-    // 2. Try Python microservice if URL is set
-    if (process.env.PYTHON_AI_SERVICE_URL) {
-      try {
-        const response = await fetch(`${process.env.PYTHON_AI_SERVICE_URL}/api/v1/interview/generate-question`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidate, config, history, currentClaimIndex, currentClaimDepth })
-        });
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (err) {
-        console.warn('Python AI service failed, falling back to Adaptive Cognitive Engine:', err);
-      }
-    }
-
-    // 3. Fallback to advanced Semantic Cognitive Engine
-    return AdaptiveInterviewEngine.generateNextQuestion(
+    // 2. Fallback to advanced Semantic Cognitive Engine with full SRS Stage support
+    const result = AdaptiveInterviewEngine.generateNextQuestion(
       candidate,
       config,
       history,
       currentClaimIndex,
-      currentClaimDepth
+      currentClaimDepth,
+      currentStage,
+      plan,
+      elapsedSeconds,
+      sttConfidence
     );
+
+    const latencyMs = Date.now() - startTime;
+    const usage = TelemetryService.createUsageRecord(
+      'question_gen',
+      'local',
+      'alphagrew-semantic-engine',
+      400,
+      80,
+      latencyMs,
+      sessionId,
+      config.tenantId
+    );
+    await memoryStore.recordAIUsage(usage);
+
+    return result;
   }
 
   async evaluateInterview(
@@ -82,8 +116,11 @@ export class UnifiedAIService implements AIServiceAdapter {
     config: InterviewConfig,
     history: ConversationTurn[],
     sessionId: string,
-    clientLLMConfig?: Partial<LLMConfig>
+    clientLLMConfig?: Partial<LLMConfig>,
+    reportVersion: number = 1
   ): Promise<EvaluationReport> {
+    const startTime = Date.now();
+
     // 1. Try LLM if configured
     const effectiveLLM = LLMService.getEffectiveConfig(clientLLMConfig);
     if (effectiveLLM) {
@@ -96,7 +133,23 @@ export class UnifiedAIService implements AIServiceAdapter {
           effectiveLLM
         );
         if (llmReport) {
-          return llmReport;
+          const latencyMs = Date.now() - startTime;
+          const usage = TelemetryService.createUsageRecord(
+            'report_gen',
+            effectiveLLM.provider as any,
+            effectiveLLM.model || 'gemini-3.6-flash',
+            2500,
+            1200,
+            latencyMs,
+            sessionId,
+            config.tenantId
+          );
+          await memoryStore.recordAIUsage(usage);
+
+          return {
+            ...llmReport,
+            version: reportVersion
+          };
         }
       } catch (err) {
         console.warn('LLM Evaluation error, falling back to Local Evaluator:', err);
@@ -104,12 +157,28 @@ export class UnifiedAIService implements AIServiceAdapter {
     }
 
     // 2. Fallback to local intelligent evaluator
-    return InterviewEvaluator.generateEvaluation(
+    const report = InterviewEvaluator.generateEvaluation(
       candidate,
       config,
       history,
-      sessionId
+      sessionId,
+      reportVersion
     );
+
+    const latencyMs = Date.now() - startTime;
+    const usage = TelemetryService.createUsageRecord(
+      'report_gen',
+      'local',
+      'alphagrew-evaluator-v1',
+      1200,
+      600,
+      latencyMs,
+      sessionId,
+      config.tenantId
+    );
+    await memoryStore.recordAIUsage(usage);
+
+    return report;
   }
 }
 

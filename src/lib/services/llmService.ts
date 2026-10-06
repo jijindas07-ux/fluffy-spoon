@@ -238,6 +238,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
       if (parsed && parsed.question) {
         return {
           question: parsed.question,
+          stage: 'PROJECT_DEEP_DIVE',
           anchoredClaimId: parsed.anchoredClaimId || activeClaim?.id || 'claim-1',
           claimDepthLevel: typeof parsed.claimDepthLevel === 'number' ? parsed.claimDepthLevel : currentClaimDepth + 1,
           investigationContext: parsed.assessmentNote || `Investigating: "${activeClaim?.rawClaim || 'Professional Background'}"`,
@@ -365,16 +366,21 @@ Respond ONLY with a valid JSON object matching this exact schema:
       const responseText = await this.callLLM(prompt, llmConfig, true);
       const parsed = this.cleanAndParseJSON(responseText);
       if (parsed && parsed.overallScore && parsed.executiveSummary) {
+        const overallScore = Number(parsed.overallScore) || 75;
+        const roleReadiness = overallScore >= 88 ? 'Immediate Match' : overallScore >= 75 ? 'Ready with Minor Onboarding' : overallScore >= 60 ? 'Needs Targeted Upskilling' : 'Not Currently Ready';
+
         return {
           id: `rep-${Date.now()}`,
           sessionId,
+          version: 1,
           candidateName: candidate.name,
           targetRole: config.roleTitle,
           seniority: config.seniority,
           completedAt: new Date().toISOString(),
           durationMinutesSpent: config.durationMinutes,
           totalTurns: history.length,
-          overallScore: Number(parsed.overallScore) || 75,
+          overallScore,
+          roleReadiness,
           recommendation: parsed.recommendation || 'Hire',
           executiveSummary: parsed.executiveSummary,
           dimensions: {

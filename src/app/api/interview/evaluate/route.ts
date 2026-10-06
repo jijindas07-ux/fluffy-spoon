@@ -6,7 +6,7 @@ import { validateToken, extractTokenFromRequest } from '@/lib/auth/authUtils';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { sessionId, clientLLMConfig, userId: bodyUserId } = body;
+    const { sessionId, clientLLMConfig, userId: bodyUserId, reportVersion = 1 } = body;
 
     if (!sessionId) {
       return NextResponse.json({ success: false, error: 'Session ID required' }, { status: 400 });
@@ -38,10 +38,36 @@ export async function POST(req: NextRequest) {
       session.config,
       session.turns,
       session.id,
-      llmConfig
+      llmConfig,
+      reportVersion
     );
 
+    // Attach usage telemetry summary
+    const usages = await memoryStore.getAIUsage(sessionId);
+    if (usages.length > 0) {
+      const totalTokens = usages.reduce((sum, u) => sum + u.inputTokens + u.outputTokens, 0);
+      const totalLatencyMs = usages.reduce((sum, u) => sum + u.latencyMs, 0);
+      const totalCostUsd = usages.reduce((sum, u) => sum + u.estimatedCostUsd, 0);
+      report.aiUsageSummary = {
+        totalTokens,
+        totalLatencyMs,
+        totalCostUsd: Number(totalCostUsd.toFixed(5)),
+        provider: usages[0].provider,
+        model: usages[0].model
+      };
+    }
+
     await memoryStore.saveReport(report, userId || undefined);
+
+    // Audit log (Section 17 Security)
+    await memoryStore.logAuditEvent({
+      tenantId: session.tenantId,
+      userId: userId || undefined,
+      action: 'interview_complete',
+      entityType: 'report',
+      entityId: report.id,
+      metadataJson: { overallScore: report.overallScore, recommendation: report.recommendation }
+    });
 
     return NextResponse.json({
       success: true,
