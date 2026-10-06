@@ -42,11 +42,30 @@ class MemoryStorage {
   private aiUsageRecords: AIUsageRecord[] = [];
   private auditLogs: AuditLogRecord[] = [];
   private feedbackRecords: CandidateFeedback[] = [];
+  // SHA-256 Content-Hash Resume Cache (SRS FR-002)
+  private resumeCache: Map<string, CandidateProfile> = new Map();
 
   // Scoped indexes
   private candidatesByUser: Map<string, Set<string>> = new Map(); // userId -> Set<candidateId>
   private sessionsByUser: Map<string, Set<string>> = new Map(); // userId -> Set<sessionId>
   private sessionsByTenant: Map<string, Set<string>> = new Map(); // tenantId -> Set<sessionId>
+
+  saveCachedResume(sha256: string, profile: CandidateProfile) {
+    this.resumeCache.set(sha256, JSON.parse(JSON.stringify(profile)));
+  }
+
+  getCachedResume(sha256: string): CandidateProfile | null {
+    const cached = this.resumeCache.get(sha256);
+    if (!cached) return null;
+    const freshId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const cloned: CandidateProfile = JSON.parse(JSON.stringify(cached));
+    cloned.id = freshId;
+    cloned.claims = (cloned.claims || []).map((c, i) => ({
+      ...c,
+      id: `claim-${i + 1}-${Date.now()}`
+    }));
+    return cloned;
+  }
 
   constructor() {
     // Seed default institution/tenant

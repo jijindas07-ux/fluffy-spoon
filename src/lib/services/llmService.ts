@@ -56,14 +56,16 @@ export class LLMService {
     llmConfig: LLMConfig,
     pdfBase64?: string
   ): Promise<CandidateProfile | null> {
-    const hasPdfAttachment = Boolean(pdfBase64 && llmConfig.provider === 'gemini');
     const cleanedText = cleanPdfText(rawText || '');
+    const isTextSufficient = cleanedText.split(/\s+/).filter(Boolean).length >= 40;
+    // Only send multi-megabyte PDF attachment if text extraction was sparse/scanned
+    const hasPdfAttachment = Boolean(pdfBase64 && llmConfig.provider === 'gemini' && !isTextSufficient);
     
-    const prompt = `You are an Executive Talent Intelligence Engine and Senior Hiring Partner evaluating candidate resumes across all industries (including Finance, HR, Marketing, Sales, Healthcare, Legal, Education, Operations, and IT).
-${hasPdfAttachment ? 'Thoroughly examine the attached candidate resume document (including header, all work history roles, multi-column sections, core competencies, quantifiable bullet points, and project deliverables).' : 'Thoroughly examine the extracted resume text below.'}
+    const prompt = `You are an Executive Talent Intelligence Engine evaluating candidate resumes across all industries (Finance, HR, Marketing, Sales, Healthcare, Legal, Education, Operations, IT/Tech).
+${hasPdfAttachment ? 'Examine the attached resume document thoroughly.' : 'Examine the extracted resume text below.'}
 
 ${cleanedText && cleanedText.length > 20 ? `RESUME TEXT:
-${cleanedText.slice(0, 12000)}` : ''}
+${cleanedText.slice(0, 7500)}` : ''}
 
 ANALYSIS GOALS (ALL IN PLAIN, FLUENT ENGLISH):
 1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name, actual current/latest Job Title, and calculate total years of professional experience from the dates on the resume. NEVER assume the candidate works in IT or software unless clearly stated on the resume.
