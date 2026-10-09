@@ -120,6 +120,12 @@ export class UnifiedAIService implements AIServiceAdapter {
     reportVersion: number = 1
   ): Promise<EvaluationReport> {
     const startTime = Date.now();
+    const candidateAnswers = history.filter(t => t.speaker === 'candidate' && t.text && t.text.trim().length > 0);
+
+    // If 0 responses, immediately return genuine unconducted report with score 0
+    if (candidateAnswers.length === 0) {
+      return InterviewEvaluator.generateEvaluation(candidate, config, history, sessionId, reportVersion);
+    }
 
     // 1. Try LLM if configured
     const effectiveLLM = LLMService.getEffectiveConfig(clientLLMConfig);

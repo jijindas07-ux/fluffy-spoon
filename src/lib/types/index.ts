@@ -85,6 +85,25 @@ export interface CandidateAmbiguity {
   suggestedProbe: string;
 }
 
+export type KeywordCategory = 
+  | 'core_skill'
+  | 'domain_expertise'
+  | 'tool_or_technology'
+  | 'methodology_or_standard'
+  | 'job_responsibility'
+  | 'qualification_or_education'
+  | 'measurable_result'
+  | 'key_achievement';
+
+export interface ExtractedKeyword {
+  id: string;
+  keyword: string;
+  category: KeywordCategory;
+  evidenceSnippet: string; // verbatim source sentence/phrase from the resume
+  confidence: number;      // 0 to 1
+  sourceSection?: string;  // e.g. "Work Experience", "Core Skills", "Education", "Certifications"
+}
+
 export interface CandidateProfile {
   id: string;
   candidateId?: string;
@@ -103,6 +122,7 @@ export interface CandidateProfile {
     databases: string[];
     toolsAndInfra: string[];
   };
+  extractedKeywords?: ExtractedKeyword[];
   projects: CandidateProject[];
   education: {
     degree: string;

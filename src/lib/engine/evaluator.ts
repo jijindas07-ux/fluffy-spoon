@@ -4,8 +4,8 @@ import { AdaptiveInterviewEngine } from './adaptiveEngine';
 export class InterviewEvaluator {
   /**
    * Generates a comprehensive, evidence-based candidate evaluation report
-   * based on the exact conversation transcript, versioned rubrics (FR-011),
-   * and candidate's specific field (FR-015).
+   * based on the exact conversation transcript, versioned rubrics,
+   * and candidate's specific field.
    */
   public static generateEvaluation(
     candidate: CandidateProfile,
@@ -14,19 +14,125 @@ export class InterviewEvaluator {
     sessionId: string,
     reportVersion: number = 1
   ): EvaluationReport {
-    const candidateAnswers = history.filter(t => t.speaker === 'candidate');
+    const candidateAnswers = history.filter(t => t.speaker === 'candidate' && t.text && t.text.trim().length > 0);
     const totalWords = candidateAnswers.reduce((sum, t) => sum + t.text.split(/\s+/).length, 0);
     const avgWordsPerAnswer = candidateAnswers.length > 0 ? Math.round(totalWords / candidateAnswers.length) : 0;
     const domain = AdaptiveInterviewEngine.detectDomain(candidate);
-    
+    const claims = candidate.claims || [];
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CASE 1: UNCONDUCTED / EARLY TERMINATION WITH ZERO RESPONSES
+    // ──────────────────────────────────────────────────────────────────────────
+    if (candidateAnswers.length === 0) {
+      const emptyEvidence: EvidenceItem[] = claims.map((c, i) => ({
+        id: `ev-${i + 1}`,
+        claimId: c.id,
+        claimAssertion: c.rawClaim,
+        candidateQuote: 'No response recorded (interview ended before question was answered)',
+        assessmentVerdict: 'Superficial / Vague',
+        reasoning: 'Interview was ended prematurely before this claim could be probed during live conversation.'
+      }));
+
+      const emptyDimensions = {
+        technicalCompetency: {
+          score: 0,
+          label: 'Role & Domain Competency',
+          summary: 'Interview was not conducted. No verbal or written responses were provided to assess domain proficiency.',
+          evidenceQuotes: []
+        },
+        problemSolving: {
+          score: 0,
+          label: 'Problem Solving & Trade-offs',
+          summary: 'No scenario or problem-solving questions were attempted during this session.',
+          evidenceQuotes: []
+        },
+        communication: {
+          score: 0,
+          label: 'Communication & Conciseness',
+          summary: 'No communication data recorded. Session concluded before live inquiry.',
+          evidenceQuotes: []
+        },
+        experienceDepth: {
+          score: 0,
+          label: 'Experience Depth',
+          summary: 'No initiative drill-down answers provided.',
+          evidenceQuotes: []
+        },
+        resumeCredibility: {
+          score: 0,
+          label: 'Resume Claim Credibility',
+          summary: 'Documented resume claims remain unverified as no live probing was conducted.',
+          evidenceQuotes: []
+        }
+      };
+
+      return {
+        id: `rep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        sessionId,
+        version: reportVersion,
+        candidateName: candidate.name,
+        targetRole: config.roleTitle,
+        seniority: config.seniority,
+        completedAt: new Date().toISOString(),
+        durationMinutesSpent: 0,
+        totalTurns: history.length,
+        overallScore: 0,
+        roleReadiness: 'Not Currently Ready',
+        recommendation: 'Do Not Hire',
+        marketValuation: {
+          percentileTier: 'Unassessed / Session Ended Early',
+          experienceBandMatch: 'Interview Not Conducted',
+          estimatedRampUp: 'Evaluation Incomplete',
+          leadershipAptitude: 'Unassessed',
+          keyHiringDrivers: [
+            'Interview was concluded prematurely with 0 candidate responses.',
+            'No substantive competency data could be collected.',
+            'A complete multi-turn interview is required for evaluation.'
+          ]
+        },
+        executiveSummary: `Interview Session Incomplete / Not Conducted. The interview session for ${candidate.name} (${config.seniority} ${config.roleTitle}) was concluded early before any candidate responses were provided. No live assessment data could be collected. A complete multi-turn interview is required to evaluate competency, problem-solving, and role readiness.`,
+        dimensions: {
+          ...emptyDimensions,
+          roleCompetency: emptyDimensions.technicalCompetency
+        },
+        skillAssessments: [],
+        strengths: [
+          {
+            title: 'Interview Not Conducted',
+            description: 'No candidate responses were submitted during this session. A full interview must be conducted to assess candidate strengths.',
+            quote: 'No interview conducted'
+          }
+        ],
+        weaknesses: [
+          {
+            title: 'No Assessment Evidence',
+            description: 'The interview session was ended before questions were answered.',
+            quote: 'Early termination before answering questions'
+          }
+        ],
+        verificationAreas: [
+          {
+            area: 'Full Interview Conducted',
+            issueFound: 'Session ended early without candidate participation.',
+            suggestedOnsiteQuestion: 'Please conduct a full interview session to evaluate candidate qualifications.'
+          }
+        ],
+        evidenceItems: emptyEvidence
+      };
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // CASE 2: PARTIAL / ABORTED AFTER 1 RESPONSE
+    // ──────────────────────────────────────────────────────────────────────────
+    const isPartialAborted = candidateAnswers.length === 1;
+
     // Analyze evidence per claim
     const evidenceItems: EvidenceItem[] = [];
-    const claims = candidate.claims || [];
 
     for (let i = 0; i < claims.length; i++) {
       const claim = claims[i];
       const turnsForClaim = history.filter(t => t.speaker === 'candidate' && (t.anchoredClaimId === claim.id || !t.anchoredClaimId));
-      const relevantTurn = turnsForClaim[i] || candidateAnswers[i] || candidateAnswers[0];
+      const relevantTurn = turnsForClaim[i] || candidateAnswers[i];
 
       if (relevantTurn) {
         const analysis = AdaptiveInterviewEngine.analyzeCandidateResponse(relevantTurn.text, claim);
@@ -57,6 +163,15 @@ export class InterviewEvaluator {
           reasoning,
           stage: relevantTurn.stage
         });
+      } else {
+        evidenceItems.push({
+          id: `ev-${i + 1}`,
+          claimId: claim.id,
+          claimAssertion: claim.rawClaim,
+          candidateQuote: 'Not reached during live interview',
+          assessmentVerdict: 'Superficial / Vague',
+          reasoning: 'Interview ended before this claim could be probed.'
+        });
       }
     }
 
@@ -65,30 +180,48 @@ export class InterviewEvaluator {
     const vagueCount = evidenceItems.filter(e => e.assessmentVerdict === 'Superficial / Vague').length;
     const totalResponses = candidateAnswers.length;
 
-    // Role Competency (50-98)
-    const roleScore = Math.min(98, Math.max(50, 70 + (strongValidations * 10) - (vagueCount * 8)));
-    // Problem Solving (50-96)
-    const problemSolvingScore = Math.min(96, Math.max(52, 72 + (avgWordsPerAnswer > 25 ? 8 : -4) + (strongValidations * 6)));
-    // Communication (50-96)
-    const communicationScore = Math.min(96, Math.max(55, avgWordsPerAnswer >= 15 && avgWordsPerAnswer <= 90 ? 88 : avgWordsPerAnswer < 10 ? 62 : 78));
-    // Experience Depth (50-98)
-    const depthScore = Math.min(98, Math.max(48, 68 + (strongValidations * 11) - (vagueCount * 10)));
-    // Resume Credibility (50-98)
-    const credibilityScore = Math.min(98, Math.max(45, 75 + (strongValidations * 10) - (vagueCount * 14)));
+    let roleScore = 0;
+    let problemSolvingScore = 0;
+    let communicationScore = 0;
+    let depthScore = 0;
+    let credibilityScore = 0;
+    let overallScore = 0;
 
-    const overallScore = Math.round(
-      (roleScore * 0.3) +
-      (problemSolvingScore * 0.2) +
-      (communicationScore * 0.15) +
-      (depthScore * 0.2) +
-      (credibilityScore * 0.15)
-    );
+    if (isPartialAborted) {
+      // Heavily penalized for incomplete partial session (max score ~18-24)
+      const words = candidateAnswers[0].text.split(/\s+/).length;
+      const basePartial = words > 20 ? 20 : words > 8 ? 14 : 8;
+      roleScore = basePartial;
+      problemSolvingScore = Math.max(5, basePartial - 5);
+      communicationScore = Math.min(30, words > 15 ? 25 : 10);
+      depthScore = Math.max(5, basePartial - 4);
+      credibilityScore = Math.max(5, basePartial - 2);
+      overallScore = Math.round((roleScore * 0.3) + (problemSolvingScore * 0.2) + (communicationScore * 0.15) + (depthScore * 0.2) + (credibilityScore * 0.15));
+    } else {
+      // Standard completed/multi-turn interview scoring
+      roleScore = Math.min(98, Math.max(35, 65 + (strongValidations * 10) - (vagueCount * 8)));
+      problemSolvingScore = Math.min(96, Math.max(35, 68 + (avgWordsPerAnswer > 25 ? 8 : -6) + (strongValidations * 6) - (vagueCount * 6)));
+      communicationScore = Math.min(96, Math.max(35, avgWordsPerAnswer >= 15 && avgWordsPerAnswer <= 90 ? 88 : avgWordsPerAnswer < 10 ? 50 : 75));
+      depthScore = Math.min(98, Math.max(30, 62 + (strongValidations * 11) - (vagueCount * 10)));
+      credibilityScore = Math.min(98, Math.max(30, 68 + (strongValidations * 10) - (vagueCount * 12)));
 
-    // Role Readiness (FR-015)
+      overallScore = Math.round(
+        (roleScore * 0.3) +
+        (problemSolvingScore * 0.2) +
+        (communicationScore * 0.15) +
+        (depthScore * 0.2) +
+        (credibilityScore * 0.15)
+      );
+    }
+
+    // Role Readiness
     let roleReadiness: EvaluationReport['roleReadiness'] = 'Ready with Minor Onboarding';
     let recommendation: EvaluationReport['recommendation'] = 'Hire';
 
-    if (overallScore >= 88) {
+    if (isPartialAborted) {
+      roleReadiness = 'Not Currently Ready';
+      recommendation = 'Needs Follow-Up';
+    } else if (overallScore >= 88) {
       roleReadiness = 'Immediate Match';
       recommendation = 'Strong Hire';
     } else if (overallScore >= 77) {
@@ -97,7 +230,7 @@ export class InterviewEvaluator {
     } else if (overallScore >= 68) {
       roleReadiness = 'Needs Targeted Upskilling';
       recommendation = 'Leaning Hire';
-    } else if (overallScore >= 58) {
+    } else if (overallScore >= 55) {
       roleReadiness = 'Needs Targeted Upskilling';
       recommendation = 'Needs Follow-Up';
     } else {
@@ -105,13 +238,13 @@ export class InterviewEvaluator {
       recommendation = 'Do Not Hire';
     }
 
-    // Granular Skill Assessments (FR-011 / Database skill_assessments)
+    // Granular Skill Assessments
     const skillAssessments: SkillAssessment[] = [
       {
         skill: `${config.roleTitle} Domain Standards`,
         category: 'Core Competency',
         score: roleScore,
-        confidence: 90,
+        confidence: isPartialAborted ? 30 : 90,
         evidenceQuotes: candidateAnswers.slice(0, 2).map(a => `"${a.text.slice(0, 120)}..."`),
         gapIdentified: roleScore < 75 ? 'Requires deeper alignment on industry-standard tooling & SLAs' : undefined
       },
@@ -119,7 +252,7 @@ export class InterviewEvaluator {
         skill: 'Applied Problem Solving & Edge Cases',
         category: 'Methodology',
         score: problemSolvingScore,
-        confidence: 85,
+        confidence: isPartialAborted ? 25 : 85,
         evidenceQuotes: candidateAnswers.slice(1, 3).map(a => `"${a.text.slice(0, 120)}..."`),
         gapIdentified: problemSolvingScore < 75 ? 'Practice structured decision frameworks under ambiguity' : undefined
       },
@@ -127,7 +260,7 @@ export class InterviewEvaluator {
         skill: 'Professional Articulation & Conciseness',
         category: 'Communication',
         score: communicationScore,
-        confidence: 92,
+        confidence: isPartialAborted ? 40 : 92,
         evidenceQuotes: candidateAnswers.slice(0, 1).map(a => `"${a.text.slice(0, 120)}..."`),
         gapIdentified: communicationScore < 70 ? 'Include more quantifiable metrics when presenting results' : undefined
       },
@@ -135,7 +268,7 @@ export class InterviewEvaluator {
         skill: 'Documented Initiative Ownership',
         category: 'Authenticity',
         score: credibilityScore,
-        confidence: 88,
+        confidence: isPartialAborted ? 30 : 88,
         evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion.slice(0, 50)}...: ${e.assessmentVerdict}`),
         gapIdentified: credibilityScore < 75 ? 'Be prepared to explain trade-offs and alternative solutions considered' : undefined
       }
@@ -145,7 +278,7 @@ export class InterviewEvaluator {
     const strongAnswer = evidenceItems.find(e => e.assessmentVerdict === 'Strong Validation');
     const vagueAnswer = evidenceItems.find(e => e.assessmentVerdict === 'Superficial / Vague');
 
-    const primaryStrengthQuote = strongAnswer?.candidateQuote || (candidateAnswers[0]?.text ? `"${candidateAnswers[0].text}"` : '"Demonstrated clear domain context and professional experience."');
+    const primaryStrengthQuote = strongAnswer?.candidateQuote || (candidateAnswers[0]?.text ? `"${candidateAnswers[0].text}"` : '"Demonstrated initial context."');
     const primaryWeaknessQuote = vagueAnswer?.candidateQuote || (candidateAnswers.length > 1 ? `"${candidateAnswers[candidateAnswers.length - 1].text}"` : 'N/A');
 
     // Dynamic verification area based on domain
@@ -191,31 +324,41 @@ export class InterviewEvaluator {
       technicalCompetency: {
         score: roleScore,
         label: 'Role & Domain Competency',
-        summary: `Evaluates domain proficiency, methodologies, and execution standards required for the ${config.roleTitle} role.`,
+        summary: isPartialAborted 
+          ? 'Partial response recorded. Incomplete evidence to establish domain proficiency.'
+          : `Evaluates domain proficiency, methodologies, and execution standards required for the ${config.roleTitle} role.`,
         evidenceQuotes: candidateAnswers.slice(0, 2).map(t => `"${t.text}"`)
       },
       problemSolving: {
         score: problemSolvingScore,
         label: 'Problem Solving & Trade-offs',
-        summary: `Assessment of decision-making under operational constraints, competing priorities, and edge cases.`,
+        summary: isPartialAborted
+          ? 'Session ended before problem-solving scenarios could be presented.'
+          : `Assessment of decision-making under operational constraints, competing priorities, and edge cases.`,
         evidenceQuotes: candidateAnswers.slice(1, 2).map(t => `"${t.text}"`).filter(Boolean)
       },
       communication: {
         score: communicationScore,
         label: 'Communication & Conciseness',
-        summary: `Clarity, structure, and professional articulation during live probing.`,
+        summary: isPartialAborted
+          ? 'Only 1 brief response provided during session.'
+          : `Clarity, structure, and professional articulation during live probing.`,
         evidenceQuotes: candidateAnswers.slice(0, 1).map(t => `"${t.text}"`)
       },
       experienceDepth: {
         score: depthScore,
         label: 'Experience Depth',
-        summary: `Verification of direct hands-on initiative ownership versus passive participation.`,
+        summary: isPartialAborted
+          ? 'Insufficient conversational depth to verify project ownership.'
+          : `Verification of direct hands-on initiative ownership versus passive participation.`,
         evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion}: ${e.assessmentVerdict}`).slice(0, 2)
       },
       resumeCredibility: {
         score: credibilityScore,
         label: 'Resume Claim Credibility',
-        summary: `Alignment between documented achievements and live professional verification.`,
+        summary: isPartialAborted
+          ? 'Most documented resume claims remain unverified due to early session termination.'
+          : `Alignment between documented achievements and live professional verification.`,
         evidenceQuotes: evidenceItems.map(e => `${e.claimAssertion}: ${e.assessmentVerdict}`)
       }
     };
@@ -226,7 +369,13 @@ export class InterviewEvaluator {
     let leadershipAptitude = 'Independent Contributor';
     const keyHiringDrivers: string[] = [];
 
-    if (overallScore >= 88) {
+    if (isPartialAborted) {
+      percentileTier = 'Incomplete Evaluation (Partial Session)';
+      estimatedRampUp = 'Re-interview Required';
+      leadershipAptitude = 'Unassessed';
+      keyHiringDrivers.push('Candidate answered only 1 question before the session was terminated early.');
+      keyHiringDrivers.push('Insufficient conversational evidence to establish hiring recommendation.');
+    } else if (overallScore >= 88) {
       percentileTier = 'Top 10% Senior Talent (Tier 1)';
       estimatedRampUp = 'Immediate Day 1 Impact';
       leadershipAptitude = communicationScore >= 85 ? 'High Executive Presence' : 'Strong Domain Leadership';
@@ -262,6 +411,16 @@ export class InterviewEvaluator {
       keyHiringDrivers
     };
 
+    const executiveSummary = isPartialAborted
+      ? `Partial / Inconclusive Interview Session. ${candidate.name} attempted only 1 inquiry round for the ${config.seniority} ${config.roleTitle} role before the session was ended prematurely. The low score reflects an incomplete assessment rather than confirmed deficiency. A complete multi-stage interview is recommended.`
+      : `${candidate.name} completed an adaptive professional competency interview for the ${config.seniority} ${config.roleTitle} profile across ${totalResponses} conversational turns. ${
+          strongValidations >= 2
+            ? 'The candidate exhibited authentic, hands-on domain competence, articulating clear decision-making rationale, methodology choices, and measurable outcomes.'
+            : vagueCount >= 2
+            ? 'While the candidate demonstrated foundational knowledge, several key claims lacked granular evidence, operational specifics, and execution depth.'
+            : 'The candidate demonstrated solid baseline familiarity with core domain practices, providing reasonable context on their direct responsibilities.'
+        }`;
+
     return {
       id: `rep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       sessionId,
@@ -276,40 +435,50 @@ export class InterviewEvaluator {
       roleReadiness,
       recommendation,
       marketValuation,
-      executiveSummary: `${candidate.name} completed an adaptive professional competency interview for the ${config.seniority} ${config.roleTitle} profile across ${totalResponses} conversational turns. ${
-        strongValidations >= 2
-          ? 'The candidate exhibited authentic, hands-on domain competence, articulating clear decision-making rationale, methodology choices, and measurable outcomes.'
-          : vagueCount >= 2
-          ? 'While the candidate demonstrated foundational knowledge, several key claims lacked granular evidence, operational specifics, and execution depth.'
-          : 'The candidate demonstrated solid baseline familiarity with core domain practices, providing reasonable context on their direct responsibilities.'
-      }`,
+      executiveSummary,
       dimensions: {
         ...reportDimensions,
         roleCompetency: reportDimensions.technicalCompetency
       },
       skillAssessments,
-      strengths: [
-        {
-          title: strongValidations > 0 ? 'Verified Initiative Ownership' : 'Articulate Domain Understanding',
-          description: strongValidations > 0
-            ? 'Demonstrated authentic hands-on grasp of operational details, citing concrete methodologies and execution decisions.'
-            : 'Communicated high-level professional responsibilities clearly throughout the interview.',
-          quote: primaryStrengthQuote
-        }
-      ],
-      weaknesses: [
-        {
-          title: vagueCount > 0 ? 'Superficial Claim Verification' : 'Operational Drill-down Depth',
-          description: vagueCount > 0
-            ? 'Candidate gave high-level or hesitant responses when probed on granular operational challenges and decision rationales.'
-            : 'Could provide deeper quantitative evidence regarding long-term project outcomes.',
-          quote: primaryWeaknessQuote
-        }
-      ],
+      strengths: isPartialAborted
+        ? [
+            {
+              title: 'Initial Participation',
+              description: 'Candidate initiated the interview session and answered 1 opening question.',
+              quote: primaryStrengthQuote
+            }
+          ]
+        : [
+            {
+              title: strongValidations > 0 ? 'Verified Initiative Ownership' : 'Articulate Domain Understanding',
+              description: strongValidations > 0
+                ? 'Demonstrated authentic hands-on grasp of operational details, citing concrete methodologies and execution decisions.'
+                : 'Communicated high-level professional responsibilities clearly throughout the interview.',
+              quote: primaryStrengthQuote
+            }
+          ],
+      weaknesses: isPartialAborted
+        ? [
+            {
+              title: 'Incomplete Interview Loop',
+              description: 'The session was concluded before problem-solving, project deep dive, or behavioral evaluation could be conducted.',
+              quote: 'Session ended after 1 response'
+            }
+          ]
+        : [
+            {
+              title: vagueCount > 0 ? 'Superficial Claim Verification' : 'Operational Drill-down Depth',
+              description: vagueCount > 0
+                ? 'Candidate gave high-level or hesitant responses when probed on granular operational challenges and decision rationales.'
+                : 'Could provide deeper quantitative evidence regarding long-term project outcomes.',
+              quote: primaryWeaknessQuote
+            }
+          ],
       verificationAreas: [
         {
           area: verificationTopic,
-          issueFound: verificationIssue,
+          issueFound: isPartialAborted ? 'Incomplete interview session' : verificationIssue,
           suggestedOnsiteQuestion: verificationQuestion
         }
       ],

@@ -473,8 +473,8 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
       )}
 
       {/* Response Input Area */}
-      <form onSubmit={(e) => { e.preventDefault(); handleSendResponse(); }} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-        <div style={{ flex: 1, position: 'relative' }}>
+      <form onSubmit={(e) => { e.preventDefault(); handleSendResponse(); }} className="chat-input-form" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, position: 'relative', width: '100%' }}>
           <textarea
             ref={textareaRef}
             rows={3}
@@ -502,32 +502,35 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
           />
         </div>
 
-        {/* Voice Toggle Button */}
-        <button
-          type="button"
-          onClick={toggleListening}
-          className={`btn ${isListening ? 'btn-danger' : 'btn-secondary'}`}
-          style={{
-            height: '52px',
-            padding: '0 1.25rem',
-            background: isListening ? '#ef4444' : undefined,
-            color: isListening ? '#fff' : undefined
-          }}
-          title={isListening ? 'Stop listening' : 'Speak answer using microphone'}
-        >
-          {isListening ? <MicOff size={20} /> : <Mic size={20} color="var(--accent-cyan)" />}
-        </button>
+        <div className="chat-input-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {/* Voice Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleListening}
+            className={`btn ${isListening ? 'btn-danger' : 'btn-secondary'}`}
+            style={{
+              height: '52px',
+              padding: '0 1.25rem',
+              background: isListening ? '#ef4444' : undefined,
+              color: isListening ? '#fff' : undefined,
+              flexShrink: 0
+            }}
+            title={isListening ? 'Stop listening' : 'Speak answer using microphone'}
+          >
+            {isListening ? <MicOff size={20} /> : <Mic size={20} color="var(--accent-cyan)" />}
+          </button>
 
-        {/* Send Button */}
-        <button
-          type="submit"
-          disabled={!currentResponse.trim() || isSubmitting}
-          className="btn btn-primary glow-cyan"
-          style={{ height: '52px', padding: '0 1.5rem', opacity: !currentResponse.trim() || isSubmitting ? 0.5 : 1 }}
-        >
-          <Send size={18} />
-          <span>Submit</span>
-        </button>
+          {/* Send Button */}
+          <button
+            type="submit"
+            disabled={!currentResponse.trim() || isSubmitting}
+            className="btn btn-primary glow-cyan"
+            style={{ height: '52px', padding: '0 1.5rem', opacity: !currentResponse.trim() || isSubmitting ? 0.5 : 1, flexShrink: 0 }}
+          >
+            <Send size={18} />
+            <span>Submit</span>
+          </button>
+        </div>
       </form>
     </div>
   );

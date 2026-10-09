@@ -201,31 +201,44 @@ export class AdaptiveInterviewEngine {
   ): string {
     const candidateFirstName = candidate.name.split(' ')[0];
     const claimClean = claim.rawClaim.replace(/\.$/, '');
+    const keywords = candidate.extractedKeywords || [];
+    const relevantTool = keywords.find(k => k.category === 'tool_or_technology')?.keyword;
+    const relevantMethod = keywords.find(k => k.category === 'methodology_or_standard')?.keyword;
+    const relevantMetric = keywords.find(k => k.category === 'measurable_result')?.keyword;
+    const relevantResponsibility = keywords.find(k => k.category === 'job_responsibility')?.keyword;
 
     switch (stage) {
       case 'INTRO': {
-        return `Hello ${candidateFirstName}, welcome to our interview for the ${config.seniority} ${config.roleTitle} position. To start, could you give a high-level overview of your background and how your core experience aligns with this role?`;
+        const effectiveRole = config.roleTitle.toLowerCase().startsWith(config.seniority.toLowerCase())
+          ? config.roleTitle
+          : `${config.seniority} ${config.roleTitle}`;
+        const expertiseFocus = keywords.filter(k => k.category === 'core_skill' || k.category === 'domain_expertise').slice(0, 2).map(k => k.keyword).join(' and ');
+        return `Hello ${candidateFirstName}, welcome to our interview for the ${effectiveRole} position. To start, could you give a high-level overview of your background${expertiseFocus ? `, particularly your experience in ${expertiseFocus}` : ''}, and how your core capabilities align with this role?`;
       }
 
       case 'RESUME_DISCUSSION': {
+        if (relevantResponsibility && depth > 1) {
+          return `Looking at your experience, you noted your role in ${relevantResponsibility}. Could you walk me through the strategic context, the key stakeholders involved, and your primary ownership in that initiative?`;
+        }
         return `Looking at your professional trajectory, you've highlighted your work as a ${candidate.title}. On your resume, you specifically noted that you "${claimClean}". Could you walk me through the strategic context and your primary ownership in that role?`;
       }
 
       case 'TECHNICAL': {
+        const methodOrTool = relevantMethod || relevantTool;
         if (domain === 'finance') {
-          return `In terms of financial methodologies and reporting rigor: when building forecasting models or variance frameworks for ${claim.contextProject || 'major initiatives'}, what key accounting principles and modeling safeguards do you establish?`;
+          return `In terms of financial methodologies and reporting rigor: when building forecasting models or variance frameworks${methodOrTool ? ` utilizing ${methodOrTool}` : ''} for ${claim.contextProject || 'major initiatives'}, what key accounting principles and modeling safeguards do you establish?`;
         }
         if (domain === 'hr') {
-          return `Regarding your talent acquisition and HR operational framework: what sourcing channels, interview evaluation rubrics, and ATS workflows have you found most effective when hiring for high-demand talent?`;
+          return `Regarding your talent acquisition and HR operational framework: what sourcing channels, interview evaluation rubrics, and ATS workflows${relevantTool ? ` (such as ${relevantTool})` : ''} have you found most effective when hiring for high-demand talent?`;
         }
         if (domain === 'marketing') {
-          return `From a marketing and growth perspective: what attribution models, analytics tools, and conversion benchmarks did you rely upon when executing campaigns for ${claim.contextProject || 'your recent initiatives'}?`;
+          return `From a marketing and growth perspective: what attribution models, analytics tools${relevantTool ? ` like ${relevantTool}` : ''}, and conversion benchmarks did you rely upon when executing campaigns for ${claim.contextProject || 'your recent initiatives'}?`;
         }
         if (domain === 'sales') {
-          return `Regarding sales execution and deal velocity: what structured qualification framework (such as MEDDIC or BANT) do you apply when managing enterprise sales cycles from discovery to contract execution?`;
+          return `Regarding sales execution and deal velocity: what structured qualification framework${relevantMethod ? ` such as ${relevantMethod}` : ' (such as MEDDIC or BANT)'} do you apply when managing enterprise sales cycles from discovery to contract execution?`;
         }
         if (domain === 'healthcare') {
-          return `In terms of clinical protocol compliance and patient management: what standard assessment protocols and safety guidelines do you enforce during high-acuity patient handoffs?`;
+          return `In terms of clinical protocol compliance and patient management: what standard assessment protocols${relevantMethod ? ` including ${relevantMethod}` : ''} and safety guidelines do you enforce during high-acuity patient handoffs?`;
         }
         if (domain === 'legal') {
           return `Regarding legal risk analysis and compliance: how do you structure statutory due diligence and contract negotiation to protect the organization while supporting commercial business objectives?`;
@@ -234,7 +247,7 @@ export class AdaptiveInterviewEngine {
           return `From an instructional and pedagogical standpoint: how do you design differentiated lesson structures and align formative assessments with institutional learning standards?`;
         }
         if (domain === 'tech') {
-          return `From a technical architecture standpoint: how did you design the system boundaries, data contracts, and reliability guarantees for ${claim.contextProject || 'this architecture'}?`;
+          return `From a technical architecture standpoint: how did you design the system boundaries, data contracts, and reliability guarantees${relevantTool ? ` with ${relevantTool}` : ''} for ${claim.contextProject || 'this architecture'}?`;
         }
         return `Regarding core operational competencies: what specific methodologies, standards, and management tools do you implement to ensure consistent execution quality?`;
       }
@@ -243,7 +256,7 @@ export class AdaptiveInterviewEngine {
         if (depth <= 1) {
           return `Let's drill into the specific claim: "${claimClean}". What was the initial baseline problem, what was your direct individual contribution, and what quantifiable outcomes were delivered?`;
         } else if (depth === 2) {
-          const topEntity = analysis?.entities[0] || 'the core methodology';
+          const topEntity = analysis?.entities[0] || relevantTool || relevantMethod || 'the core methodology';
           return `You mentioned applying ${topEntity} to solve this. What trade-offs or alternative approaches did you evaluate before settling on that approach, and how did you validate its success?`;
         } else {
           return `When unexpected constraints or performance anomalies occurred during the execution of ${claim.contextProject || 'this project'}, what was the most difficult roadblock you diagnosed, and how did you resolve it?`;

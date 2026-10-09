@@ -168,8 +168,28 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
         </div>
       </div>
 
+      {/* Incomplete interview warning banner */}
+      {report.overallScore === 0 && (
+        <div style={{
+          marginBottom: '1.25rem',
+          padding: '1rem 1.25rem',
+          background: 'rgba(239, 68, 68, 0.12)',
+          border: '1px solid rgba(239, 68, 68, 0.35)',
+          borderRadius: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          color: '#fca5a5'
+        }}>
+          <AlertTriangle size={20} color="#ef4444" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '0.88rem', lineHeight: 1.5 }}>
+            <strong>Interview Incomplete / Not Conducted:</strong> This interview was concluded early before candidate responses were provided. The score is <strong>0/100</strong> and reflects an unassessed session rather than an evaluation of candidate competency.
+          </div>
+        </div>
+      )}
+
       {/* Main Executive Summary, Valuation & Score Card */}
-      <div className="glass-card" style={{ padding: '2rem', marginBottom: '1.5rem', border: '1px solid rgba(99, 102, 241, 0.3)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%)' }}>
+      <div className="glass-card" style={{ padding: '2rem', marginBottom: '1.5rem', border: report.overallScore === 0 ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(99, 102, 241, 0.3)', background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
           
           {/* Column 1: Candidate Overview & Summary */}
@@ -182,7 +202,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
                 {report.recommendation}
               </span>
             </div>
-            <div style={{ fontSize: '0.92rem', color: 'var(--accent-cyan)', marginBottom: '1rem', fontWeight: 600 }}>
+            <div style={{ fontSize: '0.92rem', color: report.overallScore === 0 ? '#f87171' : 'var(--accent-cyan)', marginBottom: '1rem', fontWeight: 600 }}>
               {report.seniority} {report.targetRole} • {report.totalTurns} Multi-Turn Inquiries Evaluated
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.94rem', lineHeight: 1.6 }}>
@@ -198,7 +218,7 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
             padding: '1.25rem 1.4rem'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-              <TrendingUp size={16} color="var(--accent-cyan)" />
+              <TrendingUp size={16} color={report.overallScore === 0 ? '#ef4444' : 'var(--accent-cyan)'} />
               <h4 style={{ fontSize: '0.92rem', fontWeight: 700, color: '#ffffff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Executive Valuation & Fit
               </h4>
@@ -207,15 +227,15 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', fontSize: '0.86rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Talent Band Tier:</span>
-                <span style={{ fontWeight: 700, color: '#38bdf8' }}>{valuation.percentileTier}</span>
+                <span style={{ fontWeight: 700, color: report.overallScore === 0 ? '#f87171' : '#38bdf8' }}>{valuation.percentileTier}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Ramp-Up Velocity:</span>
-                <span style={{ fontWeight: 700, color: '#34d399' }}>{valuation.estimatedRampUp}</span>
+                <span style={{ fontWeight: 700, color: report.overallScore === 0 ? '#fbbf24' : '#34d399' }}>{valuation.estimatedRampUp}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Leadership Aptitude:</span>
-                <span style={{ fontWeight: 700, color: '#c084fc' }}>{valuation.leadershipAptitude}</span>
+                <span style={{ fontWeight: 700, color: report.overallScore === 0 ? '#94a3b8' : '#c084fc' }}>{valuation.leadershipAptitude}</span>
               </div>
             </div>
 
@@ -223,7 +243,9 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
               <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                 {valuation.keyHiringDrivers.map((driver, idx) => (
                   <div key={idx} style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
-                    <span style={{ color: '#10b981', flexShrink: 0 }}>✓</span>
+                    <span style={{ color: report.overallScore === 0 ? '#ef4444' : '#10b981', flexShrink: 0 }}>
+                      {report.overallScore === 0 ? '•' : '✓'}
+                    </span>
                     <span>{driver}</span>
                   </div>
                 ))}
@@ -235,21 +257,25 @@ export const EvaluationReportView: React.FC<EvaluationReportProps> = ({ report, 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
             <div style={{
               width: '135px', height: '135px', borderRadius: '50%',
-              border: '6px solid var(--accent-cyan)',
+              border: report.overallScore === 0 ? '6px solid #ef4444' : '6px solid var(--accent-cyan)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              background: 'radial-gradient(circle, rgba(6,182,212,0.18) 0%, rgba(0,0,0,0) 70%)',
-              boxShadow: '0 0 30px rgba(6,182,212,0.3)',
+              background: report.overallScore === 0
+                ? 'radial-gradient(circle, rgba(239,68,68,0.18) 0%, rgba(0,0,0,0) 70%)'
+                : 'radial-gradient(circle, rgba(6,182,212,0.18) 0%, rgba(0,0,0,0) 70%)',
+              boxShadow: report.overallScore === 0
+                ? '0 0 30px rgba(239,68,68,0.3)'
+                : '0 0 30px rgba(6,182,212,0.3)',
               marginBottom: '0.75rem'
             }}>
-              <span style={{ fontSize: '2.6rem', fontWeight: 800, color: '#ffffff', lineHeight: 1 }}>
+              <span style={{ fontSize: '2.6rem', fontWeight: 800, color: report.overallScore === 0 ? '#f87171' : '#ffffff', lineHeight: 1 }}>
                 {report.overallScore}
               </span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Score / 100
               </span>
             </div>
-            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#ffffff' }}>
-              Overall Role Readiness
+            <div style={{ fontSize: '0.88rem', fontWeight: 700, color: report.overallScore === 0 ? '#f87171' : '#ffffff' }}>
+              {report.overallScore === 0 ? 'Interview Incomplete' : 'Overall Role Readiness'}
             </div>
           </div>
         </div>

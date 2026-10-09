@@ -2,6 +2,7 @@ import { CandidateProfile, ConversationTurn, EvaluationReport, InterviewConfig }
 import { DynamicQuestionResult } from '../engine/adaptiveEngine';
 import { sanitizeClaimToEnglish } from '../engine/claimExtractor';
 import { cleanPdfText } from '../engine/pdfParser';
+import { ResumeKeywordExtractor } from '../engine/keywordExtractor';
 
 export interface LLMConfig {
   provider: 'gemini' | 'openai' | 'groq' | 'custom' | 'auto';
@@ -142,6 +143,7 @@ Respond ONLY with a valid JSON object matching this schema:
 
         if (sanitizedClaims.length > 0) {
           const uniqueCandId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+          const extractedKeywords = ResumeKeywordExtractor.extract(rawText, parsed.name || fallbackName);
           return {
             id: uniqueCandId,
             name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
@@ -154,6 +156,7 @@ Respond ONLY with a valid JSON object matching this schema:
               databases: parsed.skills?.databases || [],
               toolsAndInfra: parsed.skills?.toolsAndInfra || []
             },
+            extractedKeywords,
             projects: parsed.projects || [],
             education: parsed.education || [],
             parserSource: hasPdfAttachment ? 'gemini_multimodal' : 'gemini_text',
@@ -191,6 +194,7 @@ Respond ONLY with a valid JSON object matching this schema:
     }).join('\n\n');
 
     const isFirstQuestion = history.length === 0;
+    const topKeywords = (candidate.extractedKeywords || []).slice(0, 8).map(k => `• [${k.category}] ${k.keyword} (Evidence: "${k.evidenceSnippet.slice(0, 70)}")`).join('\n');
 
     const prompt = `You are a professional, highly articulate interviewer across all industries.
 You are conducting a live interview for candidate "${candidate.name}".
@@ -200,7 +204,7 @@ CANDIDATE RESUME SUMMARY:
 ${candidate.summary}
 Key Skills / Knowledge: ${[...candidate.skills.languages, ...candidate.skills.frameworks, ...candidate.skills.databases, ...candidate.skills.toolsAndInfra].join(', ')}
 
-KEY CLAIMS EXTRACTED FROM RESUME:
+${topKeywords ? `GROUNDED KEYWORDS & EVIDENCE:\n${topKeywords}\n\n` : ''}KEY CLAIMS EXTRACTED FROM RESUME:
 ${claims.map((c, i) => `${i + 1}. [${c.category}] "${c.rawClaim}" (Context: ${c.contextProject || 'General Experience'}, Metrics: ${c.claimedMetrics || 'N/A'})`).join('\n')}
 
 CURRENT FOCUS CLAIM: "${activeClaim?.rawClaim || 'Candidate Experience'}" (Claim ${currentClaimIndex + 1} of ${claims.length})
@@ -265,6 +269,11 @@ Respond ONLY with a valid JSON object matching this exact schema:
     sessionId: string,
     llmConfig: LLMConfig
   ): Promise<EvaluationReport | null> {
+    const candidateTurns = history.filter(t => t.speaker === 'candidate' && t.text && t.text.trim().length > 0);
+    if (candidateTurns.length === 0) {
+      return null;
+    }
+
     const claims = candidate.claims || [];
     const transcriptFormatted = history.map((t, idx) => {
       return `${t.speaker === 'ai' ? 'Interviewer' : 'Candidate'}: "${t.text}"`;

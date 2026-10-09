@@ -1,5 +1,6 @@
 import type { CandidateProfile, ResumeClaim } from '../types';
 import { cleanPdfText, isReadableEnglishText, stripPdfSyntax } from './pdfParser';
+import { ResumeKeywordExtractor } from './keywordExtractor';
 
 /**
  * Sanitize individual claim text to make sure it's presented in 100% clean, proper English.
@@ -52,7 +53,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       cleanLine.length < 35 && 
       !/resume|curriculum|cv|email|phone|experience|summary|skills|education|profile|objective|contact|page\s*\d|portfolio|github|linkedin|developer|engineer|manager/i.test(cleanLine)
     ) {
-      detectedName = cleanLine;
+      detectedName = words.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
       break;
     }
   }
@@ -546,6 +547,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
   }
 
   const uniqueCandId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  const extractedKeywords = ResumeKeywordExtractor.extract(rawText, detectedName);
 
   return {
     id: uniqueCandId,
@@ -559,6 +561,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       databases: Array.from(databases),
       toolsAndInfra: Array.from(toolsAndInfra)
     },
+    extractedKeywords,
     projects: projectsList,
     education: educationList,
     claims: extractedClaims

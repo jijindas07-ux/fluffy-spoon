@@ -75,9 +75,12 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
       claims: preset.claims.map((c, i) => ({
         ...c,
         id: `claim-${i + 1}-${Date.now()}`
+      })),
+      extractedKeywords: (preset.extractedKeywords || []).map((k, i) => ({
+        ...k,
+        id: `kw-${i + 1}-${Date.now()}`
       }))
     };
-    console.log(`[UPLOAD] Selected preset profile "${preset.name}", generated fresh ID: ${freshId}`);
     onProfileParsed(freshPreset);
   };
 

@@ -62,8 +62,14 @@ class MemoryStorage {
     cloned.id = freshId;
     cloned.claims = (cloned.claims || []).map((c, i) => ({
       ...c,
-      id: `claim-${i + 1}-${Date.now()}`
+      id: `claim-${i + 1}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`
     }));
+    if (cloned.extractedKeywords) {
+      cloned.extractedKeywords = cloned.extractedKeywords.map((k, i) => ({
+        ...k,
+        id: `kw-${i + 1}-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`
+      }));
+    }
     return cloned;
   }
 

@@ -274,6 +274,17 @@ html, body {
 }
 
 /* Responsive Breakpoints & Mobile Optimization */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+}
+
+.table-responsive table {
+  min-width: 600px;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 0 1rem;
@@ -310,6 +321,10 @@ html, body {
   .mobile-padding-sm {
     padding: 1rem !important;
   }
+
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -340,6 +355,22 @@ html, body {
   select {
     font-size: 16px !important;
   }
+
+  /* Responsive chat form */
+  .chat-input-form {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .chat-input-actions {
+    display: flex !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+
+  .chat-input-actions button {
+    flex: 1 !important;
+  }
 }
 
 /* Prevent horizontal scroll globally */
@@ -360,4 +391,5 @@ body {
 * {
   -webkit-overflow-scrolling: touch;
 }
+
 

@@ -1,6 +1,7 @@
 import { CandidateProfile } from '../types';
+import { ResumeKeywordExtractor } from '../engine/keywordExtractor';
 
-export const SAMPLE_CANDIDATES: CandidateProfile[] = [
+const RAW_SAMPLE_CANDIDATES: CandidateProfile[] = [
   {
     id: 'cand-sarah-jenkins',
     name: 'Sarah Jenkins',
@@ -271,3 +272,26 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
     ]
   }
 ];
+
+export const SAMPLE_CANDIDATES: CandidateProfile[] = RAW_SAMPLE_CANDIDATES.map(cand => {
+  const combinedText = `
+${cand.name}
+${cand.title}
+${cand.summary}
+
+Core Skills:
+${[...cand.skills.languages, ...cand.skills.frameworks, ...cand.skills.databases, ...cand.skills.toolsAndInfra].join(', ')}
+
+Work Experience:
+${cand.projects.map(p => `${p.title} - ${p.role} (${p.duration})\n${p.highlights.join('\n')}`).join('\n\n')}
+
+Education:
+${cand.education.map(e => `${e.degree} - ${e.institution} (${e.year})`).join('\n')}
+  `.trim();
+
+  return {
+    ...cand,
+    rawExtractedText: combinedText,
+    extractedKeywords: ResumeKeywordExtractor.extract(combinedText, cand.name)
+  };
+});
