@@ -72,7 +72,7 @@ ANALYSIS GOALS (ALL IN PLAIN, FLUENT ENGLISH):
 2. **Key Roles & Companies**: Identify the candidate's key employment roles, company or institution names, and employment dates.
 3. **Verifiable Claims (CRITICAL: CLEAN ENGLISH ONLY, KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE ENGLISH SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Managed a $4.2M departmental budget with zero negative variances."). NEVER dump PDF tags, font bytecode, or multiple sentences into a single claim!
 4. **Metrics & Impact**: Capture the exact metrics, percentages, revenue figures, numbers, volumes, or business outcomes mentioned.
-5. **Categorization**: Categorize each claim naturally using universal categories: "Impact & Results", "Leadership & Management", "Process & Operations", "Domain Expertise", "Strategy & Planning", or "Scale & Systems".
+5. **Categorization**: Categorize each claim naturally using universal categories: "Key Achievement & Outcomes", "Leadership & Team Direction", "Operational Execution & Quality", "Strategic Initiatives & Planning", "Tools, Platforms & Methodologies", "Impact & Results", or "Process & Operations".
 6. **Skills & Tools**: Extract all relevant professional skills, methodologies, enterprise platforms (ERP, CRM, ATS, EHR, LMS, etc.), and tools explicitly mentioned on the resume.
 
 Respond ONLY with a valid JSON object matching this schema:
@@ -91,7 +91,7 @@ Respond ONLY with a valid JSON object matching this schema:
     {
       "id": "claim-1",
       "rawClaim": "Single concise English sentence under 20 words describing one specific achievement or metric.",
-      "category": "Impact & Results",
+      "category": "Key Achievement & Outcomes",
       "contextProject": "Company or Project Name",
       "claimedMetrics": "Exact metric mentioned (or 'Documented Highlight')",
       "confidenceLevel": "High",
@@ -131,7 +131,7 @@ Respond ONLY with a valid JSON object matching this schema:
             return {
               id: c.id || `claim-${i + 1}`,
               rawClaim: cleanClaim,
-              category: c.category || 'Domain Expertise',
+              category: c.category || 'Key Achievement & Outcomes',
               contextProject: c.contextProject || 'Project Experience',
               claimedMetrics: c.claimedMetrics || 'Documented Highlight',
               confidenceLevel: c.confidenceLevel || 'High',
@@ -371,6 +371,9 @@ Respond ONLY with a valid JSON object matching this exact schema:
         const overallScore = Number(parsed.overallScore) || 75;
         const roleReadiness = overallScore >= 88 ? 'Immediate Match' : overallScore >= 75 ? 'Ready with Minor Onboarding' : overallScore >= 60 ? 'Needs Targeted Upskilling' : 'Not Currently Ready';
 
+        const percentileTier = overallScore >= 88 ? 'Top 10% Senior Talent (Tier 1)' : overallScore >= 77 ? 'Competitive High Performer (Tier 2)' : overallScore >= 65 ? 'Core Operational Contributor (Tier 3)' : 'Developing Candidate (Tier 4)';
+        const estimatedRampUp = overallScore >= 88 ? 'Immediate Day 1 Impact' : overallScore >= 77 ? 'Rapid Ramp-Up (1-2 Weeks)' : overallScore >= 65 ? 'Guided Onboarding (3-4 Weeks)' : 'Structured Upskilling (2+ Months)';
+
         return {
           id: `rep-${Date.now()}`,
           sessionId,
@@ -385,6 +388,16 @@ Respond ONLY with a valid JSON object matching this exact schema:
           roleReadiness,
           recommendation: parsed.recommendation || 'Hire',
           executiveSummary: parsed.executiveSummary,
+          marketValuation: parsed.marketValuation || {
+            percentileTier,
+            experienceBandMatch: `${config.seniority} Band (${candidate.experienceYears > 0 ? candidate.experienceYears + '+ Years Exp' : 'Targeted Role Fit'})`,
+            estimatedRampUp,
+            leadershipAptitude: overallScore >= 80 ? 'High Professional Ownership' : 'Independent Contributor',
+            keyHiringDrivers: [
+              'Structured evaluation based on multi-turn interactive interview responses.',
+              'Verified alignment across core domain competencies and documented background.'
+            ]
+          },
           dimensions: {
             ...parsed.dimensions,
             roleCompetency: parsed.dimensions?.technicalCompetency

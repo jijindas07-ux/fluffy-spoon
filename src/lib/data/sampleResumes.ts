@@ -71,7 +71,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-fin-3',
         rawClaim: 'Designed SOX-compliant internal control matrix reducing external audit testing fees by 24%.',
-        category: 'Leadership & Management',
+        category: 'Operational Execution & Quality',
         contextProject: 'Cloud ERP Migration & SOX Controls Framework',
         claimedMetrics: '24% audit fee reduction',
         confidenceLevel: 'Medium',
@@ -131,7 +131,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-hr-1',
         rawClaim: 'Scaled organization from 180 to 420 employees while decreasing average time-to-hire by 32%.',
-        category: 'Impact & Results',
+        category: 'Key Achievement & Outcomes',
         contextProject: 'Enterprise Technical & Leadership Hiring Initiative',
         claimedMetrics: '180 to 420 hires, -32% time-to-hire',
         confidenceLevel: 'High',
@@ -140,7 +140,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-hr-2',
         rawClaim: 'Closed 45+ senior and director-level candidates with an offer acceptance rate of 91%.',
-        category: 'Domain Expertise',
+        category: 'Leadership & Team Direction',
         contextProject: 'Enterprise Technical & Leadership Hiring Initiative',
         claimedMetrics: '45+ senior hires, 91% acceptance rate',
         confidenceLevel: 'High',
@@ -149,7 +149,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-hr-3',
         rawClaim: 'Implemented structured behavioral rubrics across hiring managers, improving 90-day retention to 94%.',
-        category: 'Process & Operations',
+        category: 'Operational Execution & Quality',
         contextProject: 'Enterprise Technical & Leadership Hiring Initiative',
         claimedMetrics: '94% 90-day retention',
         confidenceLevel: 'Medium',
@@ -197,7 +197,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-mkt-1',
         rawClaim: 'Grew annual recurring revenue from $4M to $18M while lowering blended customer acquisition cost (CAC) by 28%.',
-        category: 'Impact & Results',
+        category: 'Key Achievement & Outcomes',
         contextProject: 'Direct-to-Consumer Customer Acquisition Scale',
         claimedMetrics: '$4M to $18M ARR, -28% CAC',
         confidenceLevel: 'High',
@@ -206,7 +206,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-mkt-2',
         rawClaim: 'Restructured lifecycle email marketing sequences, generating $2.4M in repeat sales within 12 months.',
-        category: 'Strategy & Planning',
+        category: 'Strategic Initiatives & Planning',
         contextProject: 'Direct-to-Consumer Customer Acquisition Scale',
         claimedMetrics: '$2.4M repeat sales',
         confidenceLevel: 'High',
@@ -253,7 +253,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-tech-1',
         rawClaim: 'Built a high-performance Node.js API handling 100,000 users with sub-80ms p95 latency.',
-        category: 'Scale & Systems',
+        category: 'Key Achievement & Outcomes',
         contextProject: 'High-Throughput E-Commerce & Subscription API',
         claimedMetrics: '100,000 active users, <80ms p95 latency',
         confidenceLevel: 'High',
@@ -262,7 +262,7 @@ export const SAMPLE_CANDIDATES: CandidateProfile[] = [
       {
         id: 'claim-tech-2',
         rawClaim: 'Architected dual-layer caching strategy with Redis, reducing database read pressure by 64%.',
-        category: 'Scale & Systems',
+        category: 'Tools, Platforms & Methodologies',
         contextProject: 'High-Throughput E-Commerce & Subscription API',
         claimedMetrics: '64% DB read reduction',
         confidenceLevel: 'High',

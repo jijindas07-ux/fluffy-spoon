@@ -17,17 +17,13 @@ export type RigorLevel = 'Constructive & Thorough' | 'Rigorous & Challenging' | 
 export type UserRole = 'student' | 'placement_officer' | 'faculty' | 'tenant_admin' | 'platform_admin' | 'candidate' | 'admin';
 
 export type ClaimCategory = 
+  | 'Key Achievement & Outcomes'
+  | 'Leadership & Team Direction'
+  | 'Operational Execution & Quality'
+  | 'Strategic Initiatives & Planning'
+  | 'Tools, Platforms & Methodologies'
   | 'Impact & Results'
-  | 'Leadership & Management'
-  | 'Process & Operations'
-  | 'Domain Expertise'
-  | 'Strategy & Planning'
-  | 'Scale & Systems'
-  | 'Scale & Traffic'
-  | 'Architecture'
-  | 'Performance & Latency'
-  | 'Database & Storage'
-  | 'Reliability & CI/CD';
+  | 'Process & Operations';
 
 // ─── SRS 11-STAGE INTERVIEW STATE MACHINE ─────────────────────────
 export type InterviewStage = 
@@ -264,6 +260,14 @@ export interface AuditLogRecord {
   timestamp: number;
 }
 
+export interface MarketValuation {
+  percentileTier: string;
+  experienceBandMatch: string;
+  estimatedRampUp: string;
+  leadershipAptitude: string;
+  keyHiringDrivers: string[];
+}
+
 export interface EvaluationReport {
   id: string;
   sessionId: string;
@@ -278,6 +282,7 @@ export interface EvaluationReport {
   roleReadiness: 'Immediate Match' | 'Ready with Minor Onboarding' | 'Needs Targeted Upskilling' | 'Not Currently Ready';
   recommendation: 'Strong Hire' | 'Hire' | 'Leaning Hire' | 'Needs Follow-Up' | 'Do Not Hire';
   executiveSummary: string;
+  marketValuation?: MarketValuation;
   dimensions: {
     technicalCompetency: EvaluationDimension;
     roleCompetency?: EvaluationDimension;

@@ -18,6 +18,32 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
   const rawText = profile.rawExtractedText || '';
   const isAiParsed = profile.parserSource === 'gemini_multimodal' || profile.parserSource === 'gemini_text';
 
+  const renderCategoryBadge = (category: string) => {
+    switch (category) {
+      case 'Key Achievement & Outcomes':
+      case 'Impact & Results':
+        return <span className="badge badge-emerald" style={{ fontSize: '0.7rem' }}>📈 {category}</span>;
+      case 'Leadership & Team Direction':
+      case 'Leadership & Management':
+        return (
+          <span className="badge" style={{ fontSize: '0.7rem', background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+            👥 Leadership & Team Direction
+          </span>
+        );
+      case 'Operational Execution & Quality':
+      case 'Process & Operations':
+        return <span className="badge badge-cyan" style={{ fontSize: '0.7rem' }}>⚙️ {category}</span>;
+      case 'Strategic Initiatives & Planning':
+      case 'Strategy & Planning':
+        return <span className="badge badge-amber" style={{ fontSize: '0.7rem' }}>🧭 Strategic Initiatives & Planning</span>;
+      case 'Tools, Platforms & Methodologies':
+      case 'Scale & Systems':
+        return <span className="badge badge-indigo" style={{ fontSize: '0.7rem' }}>🛠️ Tools, Platforms & Methodologies</span>;
+      default:
+        return <span className="badge badge-indigo" style={{ fontSize: '0.7rem' }}>📋 {category}</span>;
+    }
+  };
+
   return (
     <div style={{ maxWidth: '980px', margin: '0 auto', padding: '1.5rem 0 3.5rem' }}>
       {/* Header breadcrumb & navigation */}
@@ -67,7 +93,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
                   {profile.name}
                 </h3>
                 <span className={isAiParsed ? "badge badge-emerald" : "badge badge-cyan"}>
-                  {isAiParsed ? '🤖 Gemini AI Scanned' : '📄 Direct PDF Parsed'}
+                  {isAiParsed ? '🤖 AI Verified Extraction' : '📄 Direct Document Extraction'}
                 </span>
               </div>
               <p style={{ color: 'var(--accent-cyan)', fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.2rem' }}>
@@ -103,7 +129,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
         )}
       </div>
 
-      {/* Tab Switcher: Targeted AI Claims vs Scanned PDF Key Points */}
+      {/* Tab Switcher: Targeted Grounded Claims vs Scanned Document Key Points */}
       <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.75rem', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('claims')}
@@ -123,7 +149,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
           }}
         >
           <ShieldCheck size={16} color={activeTab === 'claims' ? '#818cf8' : '#94a3b8'} />
-          <span>Targeted Claims ({profile.claims.length})</span>
+          <span>Grounded Claims ({profile.claims.length})</span>
         </button>
 
         <button
@@ -144,18 +170,23 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
           }}
         >
           <ListChecks size={16} color={activeTab === 'scanned_pdf' ? '#06b6d4' : '#94a3b8'} />
-          <span>Scanned PDF Key Points ({keyPoints.length})</span>
+          <span>Scanned Document Key Points ({keyPoints.length})</span>
         </button>
       </div>
 
-      {/* Tab 1: Targeted AI Claims */}
+      {/* Tab 1: Targeted Grounded Claims */}
       {activeTab === 'claims' && (
         <div style={{ marginBottom: '1.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
-            <ShieldCheck size={18} color="#818cf8" style={{ flexShrink: 0 }} />
-            <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
-              Extracted Claims (Targeted for AI Adaptive Probe)
-            </h4>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.85rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <ShieldCheck size={18} color="#818cf8" style={{ flexShrink: 0 }} />
+              <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>
+                Extracted Verifiable Claims
+              </h4>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>
+              Targeted for adaptive interview inquiry & validation
+            </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
@@ -176,9 +207,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               >
                 <div style={{ flex: 1, minWidth: '220px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
-                    <span className="badge badge-indigo" style={{ fontSize: '0.65rem' }}>
-                      {claim.category}
-                    </span>
+                    {renderCategoryBadge(claim.category)}
                     {claim.contextProject && (
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
                         Context: {claim.contextProject}
@@ -188,17 +217,41 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
                   <div style={{ fontSize: '0.92rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.4, fontFamily: 'var(--font-mono)' }}>
                     "{claim.rawClaim}"
                   </div>
-                  {claim.claimedMetrics && claim.claimedMetrics !== 'N/A' && (
-                    <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', marginTop: '0.3rem' }}>
-                      Metric / Focus: <strong>{claim.claimedMetrics}</strong>
+                  {claim.claimedMetrics && claim.claimedMetrics !== 'N/A' && claim.claimedMetrics !== 'Documented Highlight' && (
+                    <div style={{ fontSize: '0.78rem', color: 'var(--accent-cyan)', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <span>📌 Stated Deliverable / Metric:</span>
+                      <strong>{claim.claimedMetrics}</strong>
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span className="badge badge-amber" style={{ fontSize: '0.65rem' }}>
-                    Ready to Probe
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.4rem' }}>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    fontSize: '0.72rem',
+                    color: '#34d399',
+                    background: 'rgba(52, 211, 153, 0.1)',
+                    border: '1px solid rgba(52, 211, 153, 0.25)',
+                    padding: '0.2rem 0.5rem',
+                    borderRadius: '6px',
+                    fontWeight: 600
+                  }}>
+                    <CheckCircle2 size={12} />
+                    <span>Grounded in Resume</span>
                   </span>
+                  {claim.confidenceLevel && (
+                    <span style={{
+                      fontSize: '0.68rem',
+                      color: claim.confidenceLevel === 'High' ? '#a7f3d0' : '#fde68a',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      padding: '0.15rem 0.45rem',
+                      borderRadius: '4px'
+                    }}>
+                      Confidence: {claim.confidenceLevel}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}
@@ -314,7 +367,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
                 <Sparkles size={16} color="var(--primary-light)" />
                 <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
-                  Core Competencies & Skills
+                  Core Competencies & Methodologies
                 </h5>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
@@ -339,7 +392,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.85rem' }}>
                 <Database size={16} color="var(--accent-cyan)" />
                 <h5 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff' }}>
-                  Tools, Platforms & Systems
+                  Tools, Platforms & Enterprise Systems
                 </h5>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
@@ -367,7 +420,7 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <Briefcase size={16} color="#818cf8" />
             <h5 style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
-              Work Experience & Key Initiatives
+              Professional Experience & Key Initiatives
             </h5>
           </div>
 

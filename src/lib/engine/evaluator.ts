@@ -220,6 +220,48 @@ export class InterviewEvaluator {
       }
     };
 
+    // Market Valuation & Talent Band calculation
+    let percentileTier = 'Core Operational Contributor (Tier 3)';
+    let estimatedRampUp = 'Standard Onboarding (1-2 Weeks)';
+    let leadershipAptitude = 'Independent Contributor';
+    const keyHiringDrivers: string[] = [];
+
+    if (overallScore >= 88) {
+      percentileTier = 'Top 10% Senior Talent (Tier 1)';
+      estimatedRampUp = 'Immediate Day 1 Impact';
+      leadershipAptitude = communicationScore >= 85 ? 'High Executive Presence' : 'Strong Domain Leadership';
+      keyHiringDrivers.push('Consistently validated documented achievements with concrete outcomes and operational metrics.');
+      keyHiringDrivers.push('Demonstrated rigorous decision-making frameworks and clear trade-off analysis.');
+      keyHiringDrivers.push('Exhibited deep domain ownership across all evaluated conversational turns.');
+    } else if (overallScore >= 77) {
+      percentileTier = 'Competitive High Performer (Tier 2)';
+      estimatedRampUp = 'Rapid Ramp-Up (1-2 Weeks)';
+      leadershipAptitude = communicationScore >= 80 ? 'Strong Team Leadership' : 'Self-Directed Contributor';
+      keyHiringDrivers.push('Solid working familiarity across core domain responsibilities and workflows.');
+      keyHiringDrivers.push('Demonstrated authentic individual ownership on primary resume claims.');
+      keyHiringDrivers.push('Minor onboarding recommended to align on company-specific operating procedures.');
+    } else if (overallScore >= 65) {
+      percentileTier = 'Core Operational Contributor (Tier 3)';
+      estimatedRampUp = 'Guided Onboarding (3-4 Weeks)';
+      leadershipAptitude = 'Developing Leadership';
+      keyHiringDrivers.push('Baseline domain knowledge established during live interactive probing.');
+      keyHiringDrivers.push('Certain complex claims were high-level and benefit from structured team support.');
+    } else {
+      percentileTier = 'Developing Candidate (Tier 4)';
+      estimatedRampUp = 'Structured Upskilling (2+ Months)';
+      leadershipAptitude = 'Entry / Developing';
+      keyHiringDrivers.push('Responses were predominantly high-level with gaps in operational drill-down.');
+      keyHiringDrivers.push('Requires deeper alignment on industry-standard methodologies before independent execution.');
+    }
+
+    const marketValuation = {
+      percentileTier,
+      experienceBandMatch: `${config.seniority} Band (${candidate.experienceYears > 0 ? candidate.experienceYears + '+ Years Exp' : 'Targeted Role Fit'})`,
+      estimatedRampUp,
+      leadershipAptitude,
+      keyHiringDrivers
+    };
+
     return {
       id: `rep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       sessionId,
@@ -233,6 +275,7 @@ export class InterviewEvaluator {
       overallScore,
       roleReadiness,
       recommendation,
+      marketValuation,
       executiveSummary: `${candidate.name} completed an adaptive professional competency interview for the ${config.seniority} ${config.roleTitle} profile across ${totalResponses} conversational turns. ${
         strongValidations >= 2
           ? 'The candidate exhibited authentic, hands-on domain competence, articulating clear decision-making rationale, methodology choices, and measurable outcomes.'

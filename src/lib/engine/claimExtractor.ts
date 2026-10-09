@@ -390,19 +390,19 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       const match = sanitized.match(metricsRegex);
       const metrics = match ? match[0] : 'Documented Highlight';
 
-      let category: ResumeClaim['category'] = 'Domain Expertise';
+      let category: ResumeClaim['category'] = 'Operational Execution & Quality';
       if (/lead|managed|team|mentored|spearheaded|directed|coordinated|hired|partnered|stakeholder|supervised|headed|negotiated/i.test(sanitized)) {
-        category = 'Leadership & Management';
+        category = 'Leadership & Team Direction';
       } else if (/\$|revenue|budget|margin|roi|sales|growth|profit|saving|cost reduction|decreased|increased|boosted|generated|closed|conversion|p&l/i.test(sanitized)) {
-        category = 'Impact & Results';
+        category = 'Key Achievement & Outcomes';
       } else if (/process|workflow|compliance|audit|policy|onboarding|sla|turnaround|standardized|quality|operations|retention|clinical|triage|curriculum/i.test(sanitized)) {
-        category = 'Process & Operations';
+        category = 'Operational Execution & Quality';
       } else if (/strategy|roadmap|market|expansion|initiative|forecast|planned|vision|research|branding/i.test(sanitized)) {
-        category = 'Strategy & Planning';
-      } else if (/scale|traffic|concurrent|million|billion|database|system|infrastructure|platform|pipeline|architecture|load|throughput|erp|crm/i.test(sanitized)) {
-        category = 'Scale & Systems';
+        category = 'Strategic Initiatives & Planning';
+      } else if (/scale|traffic|concurrent|million|billion|database|system|infrastructure|platform|pipeline|architecture|load|throughput|erp|crm|software|tool/i.test(sanitized)) {
+        category = 'Tools, Platforms & Methodologies';
       } else {
-        category = 'Domain Expertise';
+        category = 'Key Achievement & Outcomes';
       }
 
       const lowerKey = sanitized.toLowerCase().slice(0, 40);
@@ -439,7 +439,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
         extractedClaims.push({
           id: `claim-${claimIdx++}`,
           rawClaim: cleanLine,
-          category: 'Domain Expertise',
+          category: 'Key Achievement & Outcomes',
           contextProject: 'Documented Experience',
           claimedMetrics: 'Documented Highlight',
           confidenceLevel: 'Medium',
