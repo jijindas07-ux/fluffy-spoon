@@ -258,12 +258,12 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
   const currentStageIndex = STAGE_ORDER.indexOf(session.currentStage || 'INTRO');
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '1rem 0 3rem' }}>
+    <div className="interview-page-container">
       {/* Top Header & SRS Stage Machine Bar */}
-      <div className="glass-card" style={{ padding: '1.15rem 1.5rem', marginBottom: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+      <div className="glass-card interview-header-card">
+        <div className="interview-header-row">
+          <div style={{ flex: '1 1 240px', minWidth: 0 }}>
+            <div className="interview-badges-group">
               <span className="badge badge-cyan" style={{ fontSize: '0.75rem' }}>
                 SRS State: {session.currentStage || 'INTRO'}
               </span>
@@ -276,16 +276,14 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
                 </span>
               )}
             </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.35rem', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
               {investigationContext}
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div className="interview-header-actions">
             {/* Countdown Clock */}
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '0.45rem',
-              padding: '0.45rem 0.85rem', borderRadius: '8px',
+            <div className="interview-clock-badge" style={{
               background: secondsRemaining < 120 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 0, 0, 0.3)',
               border: `1px solid ${secondsRemaining < 120 ? '#ef4444' : 'var(--border-subtle)'}`
             }}>
@@ -302,8 +300,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
                 setIsMuted(!isMuted);
                 if (!isMuted && typeof window !== 'undefined') window.speechSynthesis.cancel();
               }}
-              className="btn btn-secondary"
-              style={{ padding: '0.45rem 0.75rem' }}
+              className="btn btn-secondary interview-control-btn"
               title={isMuted ? 'Unmute AI voice' : 'Mute AI voice'}
             >
               {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} color="var(--accent-cyan)" />}
@@ -313,8 +310,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
             <button
               type="button"
               onClick={handleSimulateReconnect}
-              className="btn btn-secondary"
-              style={{ padding: '0.45rem 0.75rem' }}
+              className="btn btn-secondary interview-control-btn"
               title="Verify connection state"
             >
               {isReconnecting ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} color="#10b981" />}
@@ -324,8 +320,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
             <button
               type="button"
               onClick={onComplete}
-              className="btn btn-secondary"
-              style={{ padding: '0.45rem 1rem', fontSize: '0.82rem', borderColor: 'var(--border-subtle)' }}
+              className="btn btn-secondary interview-finish-btn"
             >
               Finish & Evaluate
             </button>
@@ -333,25 +328,20 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
         </div>
 
         {/* Visual Stage Progress Stepper (FR-006 / Section 7) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '1rem', overflowX: 'auto', paddingBottom: '0.25rem' }}>
+        <div className="interview-stepper-container">
           {STAGE_ORDER.map((stage, idx) => {
             const isCurrent = session.currentStage === stage;
             const isPassed = currentStageIndex > idx;
             return (
               <div
                 key={stage}
+                className="interview-stepper-item"
                 style={{
-                  flex: 1,
-                  minWidth: '90px',
-                  padding: '0.35rem 0.45rem',
-                  borderRadius: '6px',
                   background: isCurrent ? 'rgba(6, 182, 212, 0.2)' : isPassed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.03)',
                   border: `1px solid ${isCurrent ? 'var(--accent-cyan)' : isPassed ? 'rgba(16, 185, 129, 0.3)' : 'transparent'}`,
-                  textAlign: 'center',
-                  transition: 'all 0.2s ease'
                 }}
               >
-                <div style={{ fontSize: '0.68rem', fontWeight: isCurrent ? 700 : 500, color: isCurrent ? 'var(--accent-cyan)' : isPassed ? '#10b981' : 'var(--text-faint)' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: isCurrent ? 700 : 500, color: isCurrent ? 'var(--accent-cyan)' : isPassed ? '#10b981' : 'var(--text-faint)', whiteSpace: 'nowrap' }}>
                   {STAGE_DISPLAY_NAMES[stage].replace(/^\d+\.\s*/, '')}
                 </div>
               </div>
@@ -361,67 +351,45 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
       </div>
 
       {/* Conversation Thread */}
-      <div className="glass-card" style={{ padding: '1.5rem', minHeight: '420px', maxHeight: '550px', overflowY: 'auto', marginBottom: '1.25rem' }}>
+      <div className="glass-card interview-chat-card">
         {session.turns.map((turn, index) => {
           const isAI = turn.speaker === 'ai';
           return (
             <div
               key={turn.id || index}
-              style={{
-                display: 'flex',
-                gap: '0.85rem',
-                marginBottom: '1.35rem',
-                justifyContent: isAI ? 'flex-start' : 'flex-end'
-              }}
+              className={`interview-turn-row ${isAI ? 'turn-ai' : 'turn-user'}`}
             >
               {isAI && (
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #06b6d4, #6366f1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                }}>
-                  <Bot size={20} color="#fff" />
+                <div className="interview-turn-avatar" style={{ background: 'linear-gradient(135deg, #06b6d4, #6366f1)' }}>
+                  <Bot size={18} color="#fff" />
                 </div>
               )}
 
-              <div style={{
-                maxWidth: '78%',
-                padding: '1rem 1.25rem',
-                borderRadius: isAI ? '12px 12px 12px 2px' : '12px 12px 2px 12px',
-                background: isAI ? 'rgba(15, 23, 42, 0.8)' : 'linear-gradient(135deg, rgba(6,182,212,0.2), rgba(99,102,241,0.25))',
-                border: `1px solid ${isAI ? 'var(--border-subtle)' : 'rgba(6,182,212,0.3)'}`,
-                color: '#ffffff',
-                lineHeight: 1.55,
-                fontSize: '0.95rem'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: isAI ? 'var(--accent-cyan)' : '#818cf8' }}>
+              <div className={`interview-turn-bubble ${isAI ? 'bubble-ai' : 'bubble-user'}`}>
+                <div className="interview-turn-header">
+                  <span className="interview-turn-speaker" style={{ color: isAI ? 'var(--accent-cyan)' : '#818cf8' }}>
                     {isAI ? 'Alphagrew AI Interviewer' : session.candidate.name}
                   </span>
                   {turn.stage && (
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+                    <span className="interview-turn-stage">
                       {turn.stage}
                     </span>
                   )}
                 </div>
 
-                <div>{turn.text}</div>
+                <div className="interview-turn-text">{turn.text}</div>
 
                 {/* Grounding tag for AI turns */}
                 {isAI && turn.anchoredClaimId && (
-                  <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.06)', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
+                  <div className="interview-turn-grounding">
                     🎯 Grounded in Resume Evidence ({turn.anchoredClaimId})
                   </div>
                 )}
               </div>
 
               {!isAI && (
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #6366f1, #a855f7)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                }}>
-                  <User size={20} color="#fff" />
+                <div className="interview-turn-avatar" style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)' }}>
+                  <User size={18} color="#fff" />
                 </div>
               )}
             </div>
@@ -429,11 +397,11 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
         })}
 
         {isSubmitting && (
-          <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.88rem' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(6,182,212,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 size={18} className="animate-spin" color="var(--accent-cyan)" />
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', color: 'var(--text-muted)', fontSize: '0.88rem', flexWrap: 'wrap' }}>
+            <div className="interview-turn-avatar" style={{ background: 'rgba(6,182,212,0.2)' }}>
+              <Loader2 size={16} className="animate-spin" color="var(--accent-cyan)" />
             </div>
-            <span>Evaluating answer evidence and formulating next adaptive probe...</span>
+            <span style={{ wordBreak: 'break-word' }}>Evaluating answer evidence and formulating next adaptive probe...</span>
           </div>
         )}
 
@@ -442,9 +410,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
 
       {/* Voice Waveform Activity Indicator (FR-009) */}
       {(isListening || isSpeakingTTS) && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-          padding: '0.6rem', marginBottom: '0.85rem', borderRadius: '8px',
+        <div className="interview-waveform-card" style={{
           background: isListening ? 'rgba(239,68,68,0.1)' : 'rgba(6,182,212,0.1)',
           border: `1px solid ${isListening ? 'rgba(239,68,68,0.3)' : 'rgba(6,182,212,0.3)'}`
         }}>
@@ -453,7 +419,7 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
             <span style={{ width: '4px', height: '24px', background: isListening ? '#ef4444' : 'var(--accent-cyan)', borderRadius: '2px', animation: 'pulse 0.7s infinite' }} />
             <span style={{ width: '4px', height: '12px', background: isListening ? '#ef4444' : 'var(--accent-cyan)', borderRadius: '2px', animation: 'pulse 1.2s infinite' }} />
           </div>
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isListening ? '#ef4444' : 'var(--accent-cyan)' }}>
+          <span className="interview-waveform-text" style={{ color: isListening ? '#ef4444' : 'var(--accent-cyan)' }}>
             {isListening ? 'Microphone Active • Listening to your answer...' : 'AI Speaking • Synthesizing question audio...'}
           </span>
         </div>
@@ -462,19 +428,19 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
       {/* Low-Confidence STT Warning (FR-012) */}
       {lowConfidenceWarning && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap',
           padding: '0.6rem 0.85rem', marginBottom: '0.85rem', borderRadius: '8px',
           background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)',
-          color: '#fbbf24', fontSize: '0.8rem'
+          color: '#fbbf24', fontSize: '0.8rem', wordBreak: 'break-word'
         }}>
-          <AlertCircle size={15} />
+          <AlertCircle size={15} style={{ flexShrink: 0 }} />
           <span>{lowConfidenceWarning}</span>
         </div>
       )}
 
       {/* Response Input Area */}
-      <form onSubmit={(e) => { e.preventDefault(); handleSendResponse(); }} className="chat-input-form" style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-end' }}>
-        <div style={{ flex: 1, position: 'relative', width: '100%' }}>
+      <form onSubmit={(e) => { e.preventDefault(); handleSendResponse(); }} className="chat-input-form">
+        <div className="chat-textarea-wrapper">
           <textarea
             ref={textareaRef}
             rows={3}
@@ -488,44 +454,32 @@ export const LiveInterview: React.FC<LiveInterviewProps> = ({ session: initialSe
               }
             }}
             disabled={isSubmitting}
-            style={{
-              width: '100%',
-              background: 'rgba(0, 0, 0, 0.45)',
-              border: '1px solid var(--border-subtle)',
-              borderRadius: '10px',
-              padding: '0.85rem 1rem',
-              color: '#ffffff',
-              fontSize: '0.95rem',
-              outline: 'none',
-              resize: 'none'
-            }}
+            className="chat-input-textarea"
           />
         </div>
 
-        <div className="chat-input-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="chat-input-actions">
           {/* Voice Toggle Button */}
           <button
             type="button"
             onClick={toggleListening}
-            className={`btn ${isListening ? 'btn-danger' : 'btn-secondary'}`}
+            className={`btn ${isListening ? 'btn-danger' : 'btn-secondary'} chat-mic-btn`}
             style={{
-              height: '52px',
-              padding: '0 1.25rem',
               background: isListening ? '#ef4444' : undefined,
               color: isListening ? '#fff' : undefined,
-              flexShrink: 0
             }}
             title={isListening ? 'Stop listening' : 'Speak answer using microphone'}
           >
-            {isListening ? <MicOff size={20} /> : <Mic size={20} color="var(--accent-cyan)" />}
+            {isListening ? <MicOff size={18} /> : <Mic size={18} color="var(--accent-cyan)" />}
+            <span className="chat-mic-label">{isListening ? 'Stop Mic' : 'Voice'}</span>
           </button>
 
           {/* Send Button */}
           <button
             type="submit"
             disabled={!currentResponse.trim() || isSubmitting}
-            className="btn btn-primary glow-cyan"
-            style={{ height: '52px', padding: '0 1.5rem', opacity: !currentResponse.trim() || isSubmitting ? 0.5 : 1, flexShrink: 0 }}
+            className="btn btn-primary glow-cyan chat-submit-btn"
+            style={{ opacity: !currentResponse.trim() || isSubmitting ? 0.5 : 1 }}
           >
             <Send size={18} />
             <span>Submit</span>

@@ -344,7 +344,7 @@ html, body {
     font-size: 1.2rem !important;
   }
 
-  .btn {
+  .btn:not(.btn-inline):not(.btn-icon):not(.interview-control-btn):not(.chat-input-actions .btn):not(.interview-finish-btn) {
     width: 100%;
     justify-content: center;
   }
@@ -355,11 +355,361 @@ html, body {
   select {
     font-size: 16px !important;
   }
+}
 
-  /* Responsive chat form */
+/* ========================================================================== */
+/* Live Interview Page - Fully Responsive Mobile / Tablet / Desktop          */
+/* ========================================================================== */
+
+.interview-page-container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 0 3rem;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.interview-header-card {
+  padding: 1.15rem 1.5rem;
+  margin-bottom: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+.interview-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  width: 100%;
+}
+
+.interview-badges-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.interview-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.interview-clock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.interview-control-btn {
+  padding: 0.45rem 0.75rem !important;
+  width: auto !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.interview-finish-btn {
+  padding: 0.45rem 1rem !important;
+  font-size: 0.82rem !important;
+  border-color: var(--border-subtle) !important;
+  width: auto !important;
+  white-space: nowrap !important;
+}
+
+.interview-stepper-container {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 1rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.35rem;
+  scrollbar-width: thin;
+}
+
+.interview-stepper-item {
+  flex: 1 0 auto;
+  min-width: 85px;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.interview-chat-card {
+  padding: 1.5rem;
+  min-height: 420px;
+  max-height: 550px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.interview-turn-row {
+  display: flex;
+  gap: 0.85rem;
+  margin-bottom: 1.35rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.interview-turn-row.turn-ai {
+  justify-content: flex-start;
+}
+
+.interview-turn-row.turn-user {
+  justify-content: flex-end;
+}
+
+.interview-turn-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.interview-turn-bubble {
+  max-width: 78%;
+  min-width: 0;
+  padding: 1rem 1.25rem;
+  border-radius: 12px;
+  box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  color: #ffffff;
+  line-height: 1.55;
+  font-size: 0.95rem;
+}
+
+.interview-turn-bubble.bubble-ai {
+  border-radius: 12px 12px 12px 2px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid var(--border-subtle);
+}
+
+.interview-turn-bubble.bubble-user {
+  border-radius: 12px 12px 2px 12px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(99, 102, 241, 0.25));
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.interview-turn-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+  width: 100%;
+}
+
+.interview-turn-speaker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  word-break: break-word;
+}
+
+.interview-turn-stage {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.interview-turn-text {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.interview-turn-grounding {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.interview-waveform-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  margin-bottom: 0.85rem;
+  border-radius: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.interview-waveform-text {
+  font-size: 0.82rem;
+  font-weight: 600;
+  word-break: break-word;
+  text-align: center;
+}
+
+.chat-input-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.chat-textarea-wrapper {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.chat-input-textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  color: #ffffff;
+  font-size: 0.95rem;
+  outline: none;
+  resize: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.chat-input-textarea:focus {
+  border-color: var(--accent-cyan);
+}
+
+.chat-input-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.chat-mic-btn {
+  height: 52px !important;
+  padding: 0 1.25rem !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.4rem !important;
+  width: auto !important;
+}
+
+.chat-submit-btn {
+  height: 52px !important;
+  padding: 0 1.5rem !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+  width: auto !important;
+}
+
+.chat-mic-label {
+  display: none;
+}
+
+/* ─── Mobile Responsiveness (max-width: 640px) ─── */
+@media (max-width: 640px) {
+  .interview-page-container {
+    padding: 0.5rem 0 2rem;
+  }
+
+  .interview-header-card {
+    padding: 0.85rem 0.75rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .interview-header-row {
+    gap: 0.75rem;
+  }
+
+  .interview-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.4rem;
+  }
+
+  .interview-finish-btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+
+  .interview-chat-card {
+    padding: 0.85rem 0.65rem;
+    min-height: 320px;
+    max-height: 60vh;
+    margin-bottom: 0.85rem;
+  }
+
+  .interview-turn-row {
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .interview-turn-avatar {
+    width: 30px;
+    height: 30px;
+  }
+
+  .interview-turn-avatar svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .interview-turn-bubble {
+    max-width: calc(100% - 38px);
+    padding: 0.75rem 0.85rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
   .chat-input-form {
     flex-direction: column !important;
     align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+
+  .chat-textarea-wrapper {
+    width: 100% !important;
+  }
+
+  .chat-input-textarea {
+    font-size: 16px !important; /* Prevents iOS auto-zoom */
+    padding: 0.75rem 0.85rem !important;
+    min-height: 80px;
   }
 
   .chat-input-actions {
@@ -368,23 +718,124 @@ html, body {
     width: 100% !important;
   }
 
-  .chat-input-actions button {
-    flex: 1 !important;
+  .chat-mic-btn {
+    flex: 1 1 38% !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 0.75rem !important;
+    width: auto !important;
+  }
+
+  .chat-mic-label {
+    display: inline !important;
+    font-size: 0.82rem !important;
+  }
+
+  .chat-submit-btn {
+    flex: 1 1 62% !important;
+    height: 46px !important;
+    min-height: 46px !important;
+    padding: 0 1rem !important;
+    width: auto !important;
   }
 }
+
+/* ─── Small Mobile Breakpoints (max-width: 390px, including 375px and 320px) ─── */
+@media (max-width: 390px) {
+  .container {
+    padding: 0 0.5rem;
+  }
+
+  .interview-header-card {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .interview-badges-group .badge {
+    font-size: 0.68rem;
+    padding: 0.2rem 0.45rem;
+  }
+
+  .interview-header-actions {
+    gap: 0.35rem;
+  }
+
+  .interview-clock-badge {
+    padding: 0.35rem 0.55rem;
+    font-size: 0.8rem;
+  }
+
+  .interview-control-btn {
+    padding: 0.35rem 0.5rem !important;
+    height: 34px !important;
+    min-height: 34px !important;
+  }
+
+  .interview-finish-btn {
+    width: 100% !important;
+    font-size: 0.76rem !important;
+    padding: 0.4rem 0.6rem !important;
+    margin-top: 0.15rem;
+  }
+
+  .interview-stepper-item {
+    min-width: 72px;
+    padding: 0.25rem 0.35rem;
+  }
+
+  .interview-chat-card {
+    padding: 0.75rem 0.45rem;
+  }
+
+  .interview-turn-avatar {
+    width: 26px;
+    height: 26px;
+  }
+
+  .interview-turn-avatar svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .interview-turn-bubble {
+    max-width: calc(100% - 32px);
+    padding: 0.65rem 0.7rem;
+    font-size: 0.86rem;
+  }
+
+  .chat-mic-btn {
+    padding: 0 0.5rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  .chat-submit-btn {
+    padding: 0 0.75rem !important;
+    font-size: 0.82rem !important;
+  }
+}
+
 
 /* Prevent horizontal scroll globally */
 html,
 body {
   overflow-x: hidden;
   max-width: 100vw;
+  width: 100%;
 }
 
-/* Universal box-sizing */
+/* Universal box-sizing & text wrap containment */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+p, span, div, a, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+  height: auto;
 }
 
 /* Smooth touch scrolling on mobile */

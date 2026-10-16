@@ -70,7 +70,7 @@ ${cleanedText && cleanedText.length > 20 ? `RESUME TEXT:
 ${cleanedText.slice(0, 7500)}` : ''}
 
 ANALYSIS GOALS (ALL IN PLAIN, FLUENT ENGLISH):
-1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name and actual current/latest Job Title. NEVER assume the candidate works in IT or software unless clearly stated on the resume.
+1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name and actual current/latest Job Title. NEVER assume the candidate works in IT or software unless clearly stated on the resume. Preserve full hyphenated job titles (e.g. "Full-Stack Developer", "Front-End Engineer").
 2. **Professional Experience Calculation (STRICT RULES)**:
    - Calculate total years of professional experience using EMPLOYMENT HISTORY AND JOB DATES ONLY.
    - NEVER include school, college, university, degree dates, or education duration as work experience. For example, a 4-year degree (2020-2024) is EDUCATION, NOT 4 years of work experience.
@@ -82,7 +82,8 @@ ANALYSIS GOALS (ALL IN PLAIN, FLUENT ENGLISH):
 4. **Verifiable Claims (CRITICAL: CLEAN ENGLISH ONLY, KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE ENGLISH SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Managed a $4.2M departmental budget with zero negative variances."). NEVER dump PDF tags, font bytecode, or multiple sentences into a single claim!
 5. **Metrics & Impact**: Capture the exact metrics, percentages, revenue figures, numbers, volumes, or business outcomes mentioned.
 6. **Categorization**: Categorize each claim naturally using universal categories: "Key Achievement & Outcomes", "Leadership & Team Direction", "Operational Execution & Quality", "Strategic Initiatives & Planning", "Tools, Platforms & Methodologies", "Impact & Results", or "Process & Operations".
-7. **Skills & Tools**: Extract all relevant professional skills, methodologies, enterprise platforms (ERP, CRM, ATS, EHR, LMS, etc.), and tools explicitly mentioned on the resume.
+7. **Skills & Tools**: Extract all relevant professional skills, methodologies, enterprise platforms (ERP, CRM, ATS, EHR, LMS, etc.), and tools explicitly mentioned on the resume. Preserve exact technical symbols and punctuation (e.g. "C++", "C#", ".NET", "CI/CD", "Node.js", "REST APIs").
+8. **Qualifications & Abbreviations**: Always preserve exact academic degrees and professional abbreviations without stripping full stops or initials (e.g. extract "B.Tech in Computer Science", NOT "Tech"; preserve "M.Tech", "Ph.D.", "B.S.", "MBA", "PMP").
 
 Respond ONLY with a valid JSON object matching this schema:
 {

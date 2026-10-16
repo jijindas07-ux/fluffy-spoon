@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { CandidateProfile as CandidateProfileType } from '@/lib/types';
-import { User, Briefcase, Code, Database, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Award, FileText, ListChecks, Eye, ChevronDown, ChevronUp, Cpu } from 'lucide-react';
+import { User, Briefcase, Code, Database, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Award, FileText, ListChecks, Eye, ChevronDown, ChevronUp, Cpu, GraduationCap } from 'lucide-react';
 
 interface CandidateProfileProps {
   profile: CandidateProfileType;
@@ -592,6 +592,59 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
                     <li key={i}>{h}</li>
                   ))}
                 </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Education & Academic Qualifications */}
+      {profile.education && profile.education.length > 0 && (
+        <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+            <GraduationCap size={18} color="#38bdf8" />
+            <h5 style={{ fontSize: '1rem', fontWeight: 700, color: '#ffffff' }}>
+              Education & Academic Qualifications
+            </h5>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+            {profile.education.map((edu, idx) => (
+              <div 
+                key={idx} 
+                style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'flex-start',
+                  padding: '0.75rem 1rem',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-subtle)',
+                  borderRadius: '8px',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem'
+                }}
+              >
+                <div>
+                  <div style={{ fontWeight: 700, color: '#f8fafc', fontSize: '0.92rem' }}>
+                    {edu.degree}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                    🏛️ {edu.institution}
+                  </div>
+                </div>
+                {edu.year && (
+                  <span style={{ 
+                    fontSize: '0.78rem', 
+                    color: '#38bdf8', 
+                    background: 'rgba(56, 189, 248, 0.1)', 
+                    border: '1px solid rgba(56, 189, 248, 0.25)',
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: '6px',
+                    fontWeight: 600
+                  }}>
+                    {edu.year}
+                  </span>
+                )}
               </div>
             ))}
           </div>

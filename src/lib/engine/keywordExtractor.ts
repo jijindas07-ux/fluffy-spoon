@@ -201,9 +201,16 @@ const DOMAIN_ONTOLOGY: DomainRule[] = [
   { term: 'gcp', category: 'tool_or_technology', canonical: 'Google Cloud Platform (GCP)' },
   { term: 'azure', category: 'tool_or_technology', canonical: 'Microsoft Azure' },
   { term: 'git', category: 'tool_or_technology', canonical: 'Git Version Control' },
-  { term: 'ci/cd', category: 'methodology_or_standard', canonical: 'CI/CD Pipelines' },
   { term: 'microservices', category: 'methodology_or_standard', canonical: 'Microservices Architecture' },
-  { term: 'system architecture', category: 'core_skill', canonical: 'System Architecture' }
+  { term: 'system architecture', category: 'core_skill', canonical: 'System Architecture' },
+  { term: '.net', category: 'tool_or_technology', canonical: '.NET' },
+  { term: 'dotnet', category: 'tool_or_technology', canonical: '.NET' },
+  { term: 'b.tech', category: 'qualification_or_education', canonical: 'B.Tech Degree' },
+  { term: 'm.tech', category: 'qualification_or_education', canonical: 'M.Tech Degree' },
+  { term: 'b.s.', category: 'qualification_or_education', canonical: 'B.S. Degree' },
+  { term: 'm.s.', category: 'qualification_or_education', canonical: 'M.S. Degree' },
+  { term: 'ph.d', category: 'qualification_or_education', canonical: 'Ph.D. Degree' },
+  { term: 'mba', category: 'qualification_or_education', canonical: 'MBA Degree' }
 ];
 
 export class ResumeKeywordExtractor {
@@ -280,10 +287,10 @@ export class ResumeKeywordExtractor {
     for (const { section, line } of sectionLines) {
       if (section === 'Core Skills') {
         const items = line
-          .replace(/^[•\-\*\+:\d\.]+\s*/, '')
+          .replace(/^[•\*\>~▪▸►\t]+\s*|^(?:\(?\d{1,2}[.)]\s+)/, '')
           .split(/[,|•;]|\s{3,}/)
           .map(item => item.trim())
-          .filter(item => item.length >= 3 && item.length <= 40 && !item.includes('@') && !item.includes('http') && !/^(?:skills|experience|education)$/i.test(item));
+          .filter(item => item.length >= 2 && item.length <= 40 && !item.includes('@') && !item.includes('http') && !/^(?:skills|experience|education)$/i.test(item));
 
         for (const item of items) {
           const canonical = sanitizeClaimToEnglish(item).replace(/\.$/, '');
@@ -355,19 +362,30 @@ export class ResumeKeywordExtractor {
     // 5. EXTRACT QUALIFICATIONS & EDUCATION
     const eduDegreeRegex = /\b(?:bachelor|master|phd|b\.s|m\.s|b\.e|b\.tech|m\.tech|mba|bba|bca|mca|b\.com|m\.com|b\.sc|m\.sc|bsn|msn|rn|jd|llb|llm|diploma|certified|certification|licensed|chartered)\b/i;
     for (const { section, line } of sectionLines) {
+      // Must not extract from Core Skills section (e.g. if someone has B.Tech in their skills list)
+      if (section === 'Core Skills') continue;
+
       if (eduDegreeRegex.test(line)) {
         const cleanSnippet = sanitizeClaimToEnglish(line).replace(/\.$/, '');
-        if (cleanSnippet.length >= 8 && cleanSnippet.length <= 100) {
-          const mapKey = `qualification_or_education:${cleanSnippet.slice(0, 35).toLowerCase()}`;
-          if (!extractedMap.has(mapKey)) {
-            extractedMap.set(mapKey, {
-              id: `kw-${kwIdCounter++}`,
-              keyword: cleanSnippet.split(/[-–|,]/)[0].trim(),
-              category: 'qualification_or_education',
-              evidenceSnippet: cleanSnippet,
-              confidence: 0.94,
-              sourceSection: section
-            });
+        if (cleanSnippet.length >= 6 && cleanSnippet.length <= 120) {
+          // Remove dates in parentheses like (2020 - 2024) or (2024)
+          const withoutDates = cleanSnippet.replace(/\s*\((?:19\d\d|20\d\d)[^)]*\)|\b(?:19\d\d|20\d\d)\b/g, '').trim();
+          // Separate degree title from institution/school using delimiter with whitespace
+          const parts = withoutDates.split(/\s+[-–—|•]\s+|\s+from\s+|\s+at\s+/i).map(p => p.trim()).filter(Boolean);
+          const degreeKeyword = parts[0] || withoutDates;
+
+          if (degreeKeyword.length >= 3 && degreeKeyword.length <= 60) {
+            const mapKey = `qualification_or_education:${degreeKeyword.toLowerCase()}`;
+            if (!extractedMap.has(mapKey)) {
+              extractedMap.set(mapKey, {
+                id: `kw-${kwIdCounter++}`,
+                keyword: degreeKeyword,
+                category: 'qualification_or_education',
+                evidenceSnippet: cleanSnippet,
+                confidence: 0.94,
+                sourceSection: section
+              });
+            }
           }
         }
       }

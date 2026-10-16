@@ -30,12 +30,76 @@ function HomeInner() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
 
-  // Check for demo report in search params
+  // Check for demo report or interview in search params
   useEffect(() => {
     const demoParam = searchParams.get('demo') || searchParams.get('step');
     if (demoParam === 'report') {
       setEvaluationReport(SAMPLE_REPORT);
       setCurrentStep('report');
+    } else if (demoParam === 'interview') {
+      const demoCandidate: CandidateProfile = {
+        id: 'cand-demo-1',
+        name: 'Sarah Jenkins',
+        title: 'Senior Full Stack Engineer',
+        experienceYears: 6,
+        summary: 'Senior engineer specializing in distributed systems and cloud architecture.',
+        skills: {
+          languages: ['TypeScript', 'Python', 'Go'],
+          frameworks: ['React', 'Next.js', 'Node.js'],
+          databases: ['PostgreSQL', 'Redis'],
+          toolsAndInfra: ['Docker', 'Kubernetes', 'AWS', 'CI/CD']
+        },
+        projects: [],
+        education: [{ degree: 'B.Tech in Computer Science', institution: 'MIT', year: '2019' }],
+        claims: []
+      };
+      const demoSession: InterviewSession = {
+        id: 'sess-demo-interview',
+        candidate: demoCandidate,
+        config: {
+          roleTitle: 'Senior Full-Stack Developer',
+          seniority: 'Senior',
+          durationMinutes: 15,
+          focusArea: 'Deep Technical Verification',
+          rigorLevel: 'Rigorous & Challenging',
+          mode: 'text'
+        },
+        currentStage: 'TECHNICAL',
+        stageSequenceIndex: 2,
+        stageHistory: [{ stage: 'TECHNICAL', enteredAt: Date.now(), turnCount: 3 }],
+        currentClaimIndex: 0,
+        currentClaimDepth: 1,
+        difficultyLevel: 3,
+        status: 'in_progress',
+        startedAt: Date.now(),
+        turns: [
+          {
+            id: 'turn-1',
+            speaker: 'ai',
+            text: 'Hello Sarah, welcome to your technical interview. Can you walk me through your experience designing microservices with high throughput and low latency?',
+            timestamp: Date.now() - 60000,
+            stage: 'TECHNICAL'
+          },
+          {
+            id: 'turn-2',
+            speaker: 'candidate',
+            text: 'At my previous role, I architected our core checkout service using Node.js and gRPC. We implemented Redis caching and connection pooling to reduce p99 response times from 350ms to 45ms while sustaining 25,000 requests per second.',
+            timestamp: Date.now() - 30000,
+            stage: 'TECHNICAL'
+          },
+          {
+            id: 'turn-3',
+            speaker: 'ai',
+            text: 'That is impressive. How did you handle cache invalidation and ensure strong consistency during concurrent checkout spikes?',
+            timestamp: Date.now() - 10000,
+            stage: 'TECHNICAL',
+            anchoredClaimId: 'claim-checkout-latency'
+          }
+        ]
+      };
+      setCandidateProfile(demoCandidate);
+      setInterviewSession(demoSession);
+      setCurrentStep('interview');
     }
   }, [searchParams]);
 

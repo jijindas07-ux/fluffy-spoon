@@ -219,6 +219,40 @@ export function cleanPdfText(rawText: string): string {
   // Fix hyphenated words broken across line wraps (e.g. "micro-\nservices" -> "microservices")
   cleaned = cleaned.replace(/([a-zA-Z]{2,})-\s*[\r\n]+\s*([a-zA-Z]{2,})/g, '$1$2');
 
+  // Repair legitimate abbreviations, degrees, and tech tokens that may have broken spaces around punctuation
+  cleaned = cleaned
+    .replace(/\bB\s*\.\s*Tech\b/gi, 'B.Tech')
+    .replace(/\bM\s*\.\s*Tech\b/gi, 'M.Tech')
+    .replace(/\bB\s*\.\s*E\b/gi, 'B.E')
+    .replace(/\bM\s*\.\s*E\b/gi, 'M.E')
+    .replace(/\bB\s*\.\s*S\b/gi, 'B.S')
+    .replace(/\bM\s*\.\s*S\b/gi, 'M.S')
+    .replace(/\bB\s*\.\s*A\b/gi, 'B.A')
+    .replace(/\bM\s*\.\s*A\b/gi, 'M.A')
+    .replace(/\bPh\s*\.\s*D\b/gi, 'Ph.D')
+    .replace(/\bB\s*\.\s*Sc\b/gi, 'B.Sc')
+    .replace(/\bM\s*\.\s*Sc\b/gi, 'M.Sc')
+    .replace(/\bB\s*\.\s*Com\b/gi, 'B.Com')
+    .replace(/\bM\s*\.\s*Com\b/gi, 'M.Com')
+    .replace(/\bU\s*\.\s*S\b/gi, 'U.S')
+    .replace(/\bNode\s*\.\s*js\b/gi, 'Node.js')
+    .replace(/\bVue\s*\.\s*js\b/gi, 'Vue.js')
+    .replace(/\bNext\s*\.\s*js\b/gi, 'Next.js')
+    .replace(/\bReact\s*\.\s*js\b/gi, 'React.js')
+    .replace(/\bExpress\s*\.\s*js\b/gi, 'Express.js')
+    .replace(/(^|\s)\.\s*NET\b/g, '$1.NET')
+    .replace(/\bC\s*\+\+/g, 'C++')
+    .replace(/\bC\s*#/g, 'C#')
+    .replace(/\bCI\s*\/\s*CD\b/gi, 'CI/CD')
+    .replace(/\bTCP\s*\/\s*IP\b/gi, 'TCP/IP')
+    .replace(/\bP\s*&\s*L\b/gi, 'P&L')
+    .replace(/\bR\s*&\s*D\b/gi, 'R&D')
+    .replace(/\bFull\s*-\s*Stack\b/gi, 'Full-Stack')
+    .replace(/\bFront\s*-\s*End\b/gi, 'Front-End')
+    .replace(/\bBack\s*-\s*End\b/gi, 'Back-End')
+    .replace(/\bReal\s*-\s*Time\b/gi, 'Real-Time')
+    .replace(/\bEnd\s*-\s*to\s*-\s*End\b/gi, 'End-to-End');
+
   // Replace excessive line breaks (3 or more -> double newline)
   cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
@@ -274,24 +308,6 @@ async function extractSpatialTextFromPdf(buffer: Buffer): Promise<string> {
     }
 
     const pageWidth = maxX - minX;
-    const midX = minX + pageWidth * 0.45;
-
-    // Check if there is a column split
-    let leftCount = 0;
-    let rightCount = 0;
-    let crossCount = 0;
-
-    for (const item of items) {
-      if (item.x + item.width < midX) {
-        leftCount++;
-      } else if (item.x > midX) {
-        rightCount++;
-      } else {
-        crossCount++;
-      }
-    }
-
-    const isTwoColumn = pageWidth > 250 && leftCount > 6 && rightCount > 6 && crossCount < (leftCount + rightCount) * 0.35;
 
     const formatColumnItems = (colItems: TextItemInfo[]): string => {
       // Group items into lines by Y coordinate (within 3.5 points)
@@ -319,24 +335,98 @@ async function extractSpatialTextFromPdf(buffer: Buffer): Promise<string> {
       const formattedLines: string[] = [];
       for (const line of lines) {
         line.items.sort((a, b) => a.x - b.x);
-        const lineText = line.items.map(i => i.str.trim()).filter(Boolean).join(' ');
-        if (lineText) {
-          formattedLines.push(lineText);
+
+        let reconstructed = '';
+        for (let j = 0; j < line.items.length; j++) {
+          const item = line.items[j];
+          const text = item.str || '';
+          if (!text) continue;
+
+          if (j === 0 || !reconstructed) {
+            reconstructed += text;
+          } else {
+            const prev = line.items[j - 1];
+            const gap = item.x - (prev.x + prev.width);
+            const endsWithSpace = /\s$/.test(reconstructed);
+            const startsWithSpace = /^\s/.test(text);
+
+            if (endsWithSpace || startsWithSpace) {
+              reconstructed += text;
+            } else if (gap >= 1.8) {
+              reconstructed += ' ' + text;
+            } else {
+              // Same word/token (e.g. "B." + "Tech", "Full" + "-Stack", "C" + "++", "$" + "50k")
+              reconstructed += text;
+            }
+          }
+        }
+
+        const trimmed = reconstructed.trim();
+        if (trimmed) {
+          formattedLines.push(trimmed);
         }
       }
 
       return formattedLines.join('\n');
     };
 
-    if (isTwoColumn) {
-      // Split into Left column and Right column
-      const leftItems = items.filter(i => (i.x + i.width / 2) < midX);
-      const rightItems = items.filter(i => (i.x + i.width / 2) >= midX);
+    // Dynamic column boundary detection for two-column & Canva resumes
+    let isTwoColumn = false;
+    let splitX = minX + pageWidth * 0.45;
 
+    if (pageWidth > 250 && items.length > 20) {
+      // Find the vertical gutter (column gap) between 25% and 75% of page width
+      const step = 5;
+      let bestX = splitX;
+      let minOverlap = Infinity;
+
+      for (let x = minX + pageWidth * 0.25; x <= minX + pageWidth * 0.75; x += step) {
+        let left = 0;
+        let right = 0;
+        let intersecting = 0;
+
+        for (const item of items) {
+          const itemStart = item.x;
+          const itemEnd = item.x + item.width;
+          if (itemEnd < x) {
+            left++;
+          } else if (itemStart > x) {
+            right++;
+          } else {
+            intersecting++;
+          }
+        }
+
+        // Substantial items on both sides and minimal intersecting text
+        if (left >= 8 && right >= 8 && intersecting < minOverlap) {
+          minOverlap = intersecting;
+          bestX = x;
+        }
+      }
+
+      const totalColItems = items.filter(i => (i.x + i.width) < bestX || i.x > bestX).length;
+      if (minOverlap <= 4 && totalColItems >= 16) {
+        isTwoColumn = true;
+        splitX = bestX;
+      }
+    }
+
+    if (isTwoColumn) {
+      // Check for wide top header spanning across splitX (e.g. Name/Title at top of Canva resume)
+      const maxY = Math.max(...items.map(i => i.y));
+      const headerThresholdY = maxY - 75;
+      const headerItems = items.filter(i => i.y > headerThresholdY && (i.x < splitX && (i.x + i.width) > splitX || i.width > pageWidth * 0.45));
+      const nonHeaderItems = items.filter(i => !headerItems.includes(i));
+
+      const leftItems = nonHeaderItems.filter(i => (i.x + i.width / 2) < splitX);
+      const rightItems = nonHeaderItems.filter(i => (i.x + i.width / 2) >= splitX);
+
+      const headerText = headerItems.length > 0 ? formatColumnItems(headerItems) : '';
       const leftText = formatColumnItems(leftItems);
       const rightText = formatColumnItems(rightItems);
 
-      pageTexts.push(`${leftText}\n\n${rightText}`);
+      const combined = [headerText, leftText, rightText].filter(Boolean).join('\n\n');
+      pageTexts.push(combined);
     } else {
       pageTexts.push(formatColumnItems(items));
     }

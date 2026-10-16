@@ -5,32 +5,72 @@ import { ExperienceCalculator } from './experienceCalculator';
 
 /**
  * Sanitize individual claim text to make sure it's presented in 100% clean, proper English.
- * Strips all PDF object operators, font bytecode, trailing braces, and formatting debris.
+ * Preserves legitimate technical terms (.NET, C++, C#), metrics (3.5x, +5), and abbreviations (B.Tech, U.S., Inc.).
  */
 export function sanitizeClaimToEnglish(text: string): string {
   if (!text) return '';
 
   let cleaned = cleanPdfText(text)
-    // Remove leading bullet marks, numbers, or dashes
-    .replace(/^[•\-\*\+\d\.\)\:\>\s|#]+/, '')
-    // Remove trailing orphan punctuation
-    .replace(/[)\]}>/\\;,|#]+$/, '')
+    // Remove leading bullet marks (•, *, >, ~, etc.)
+    .replace(/^[•\*\>~▪▸►\t]+\s*/, '')
+    // Remove leading list numbering ONLY if followed by space (e.g. "1. ", "1) ", "(a) ", "A. ")
+    .replace(/^(?:\(?\d{1,2}[.)]\s+|\(?[a-zA-Z][.)]\s+)/, '')
     // Replace multiple spaces
     .replace(/[ \t]+/g, ' ')
     .trim();
 
-  if (!cleaned || cleaned.length < 10) return '';
+  // Remove leading dash only if followed by space (preserve words like "-NET" or compound words)
+  cleaned = cleaned.replace(/^[-–—]\s+/, '').trim();
 
-  // Capitalize first character
-  cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  // Remove trailing orphan punctuation (preserve balanced closing parens)
+  cleaned = cleaned.replace(/[:;,|#\\\/]+$/, '').trim();
+  const openParens = (cleaned.match(/\(/g) || []).length;
+  const closeParens = (cleaned.match(/\)/g) || []).length;
+  if (closeParens > openParens && cleaned.endsWith(')')) {
+    cleaned = cleaned.replace(/\)+$/, '').trim();
+  }
 
-  // Ensure ending period if it's a complete sentence
-  if (!/[.!?]$/.test(cleaned)) {
+  if (!cleaned || cleaned.length < 5) return '';
+
+  // Capitalize first character if it's a letter (do not destroy tokens like .NET)
+  if (/^[a-zA-Z]/.test(cleaned)) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  // Ensure ending period if it's a complete sentence and doesn't already end in period/punctuation
+  if (!/[.!?]$/.test(cleaned) && cleaned.length >= 20) {
     cleaned += '.';
   }
 
   return cleaned;
 }
+
+/**
+ * Safely split a text block or line into individual sentences without breaking on
+ * abbreviations (B.Tech, Ph.D., Inc., e.g., U.S.), decimals (3.5x), or initials (J. Smith).
+ */
+export function splitSentenceSafe(text: string): string[] {
+  if (!text) return [];
+
+  // Protect periods in acronyms, abbreviations, tech stacks, and decimals:
+  // 1. Internal dots like B.Tech, M.Tech, Ph.D., U.S., U.S.A., Node.js
+  // 2. Known abbreviations like Inc., Corp., Ltd., e.g., i.e., etc., vs., Dr., Mr., etc.
+  // 3. Initials like "J. Smith"
+  // 4. Decimals like 3.5x, 99.9%
+  const protectedText = text
+    .replace(/\b[A-Za-z]{1,4}\.[A-Za-z]{1,4}(?:\.[A-Za-z]{1,4})*\.?/g, m => m.replace(/\./g, '§DOT§'))
+    .replace(/\b(?:Inc|Corp|Ltd|Co|e\.g|i\.e|etc|vs|Dr|Mr|Ms|Mrs|Prof|Sr|Jr|approx|dept|univ|assoc|est|al)\./gi, m => m.replace(/\./g, '§DOT§'))
+    .replace(/\b([A-Z])\.\s+(?=[A-Za-z])/g, '$1§DOT§ ')
+    .replace(/(\d+)\.(\d+)/g, '$1§DOT§$2');
+
+  const parts = protectedText
+    .split(/(?<=[.!?•])\s+(?=[A-Z0-9"']|$)|(?<=\n)\s*|\s*[•\t]+\s*/g)
+    .map(s => s.replace(/§DOT§/g, '.').trim())
+    .filter(s => s.length > 20);
+
+  return parts;
+}
+
 
 /**
  * Intelligent Claim Extractor & Resume Structurer
@@ -91,7 +131,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       line.length < 75 &&
       !/experience|summary|skills|education|profile|curriculum|contact|email|phone|linkedin|github/i.test(line.replace(titleKeywordsRegex, ''))
     ) {
-      const cleanTitle = line.split(/[-–—|•,]/)[0].trim();
+      const cleanTitle = line.split(/\s+[-–—]\s+|\s*[|•]\s*|\s*,\s*/)[0].trim();
       if (cleanTitle.length > 3) {
         detectedTitle = sanitizeClaimToEnglish(cleanTitle).replace(/\.$/, '');
         break;
@@ -109,7 +149,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
         !line.startsWith('•') &&
         !line.startsWith('-')
       ) {
-        const parts = line.split(/[-–—|•:]/).map(p => p.trim()).filter(Boolean);
+        const parts = line.split(/\s+[-–—]\s+|\s*[|•:]\s*/).map(p => p.trim()).filter(Boolean);
         const candidatePart = parts.find(p => titleKeywordsRegex.test(p) && p.length < 50);
         if (candidatePart) {
           detectedTitle = sanitizeClaimToEnglish(candidatePart).replace(/\.$/, '');
@@ -265,6 +305,15 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     'vue': { set: frameworks, canonical: 'Vue.js' },
     'fastapi': { set: frameworks, canonical: 'FastAPI' },
     'spring boot': { set: frameworks, canonical: 'Spring Boot' },
+    '.net': { set: frameworks, canonical: '.NET' },
+    'dotnet': { set: frameworks, canonical: '.NET' },
+    'asp.net': { set: frameworks, canonical: 'ASP.NET' },
+    'rest api': { set: frameworks, canonical: 'REST APIs' },
+    'rest apis': { set: frameworks, canonical: 'REST APIs' },
+    'graphql': { set: frameworks, canonical: 'GraphQL' },
+    'ci/cd': { set: toolsAndInfra, canonical: 'CI/CD' },
+    'cicd': { set: toolsAndInfra, canonical: 'CI/CD' },
+    'linux': { set: toolsAndInfra, canonical: 'Linux' },
     'postgres': { set: databases, canonical: 'PostgreSQL' },
     'postgresql': { set: databases, canonical: 'PostgreSQL' },
     'redis': { set: databases, canonical: 'Redis' },
@@ -316,17 +365,36 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
 
   // 4. (Experience calculation is performed deterministically via ExperienceCalculator using work history)
 
-  // 5. Extract Real Claims: Split by sentence boundaries (. , \n, •) so claims are short and concise
+  // 5. Extract Real Claims: Split by safe sentence boundaries (. , \n, •) so claims are short and concise
   const extractedClaims: ResumeClaim[] = [];
   const metricsRegex = /(\d[\d,.]*\s*[%kKmMbB\+]|\d[\d,.]*\s*(?:users|rps|tps|ms|requests|concurrent|million|billion|queries|events|tb|gb|sec|min|hrs|percent|reduction|increase|downloads|clients|interviews|profiles|applications|drives|roles|projects|candidates|positions|requisitions|loops|\$))/i;
 
-  // Split raw text into individual distinct sentences
+  // Split raw text into individual distinct sentences, avoiding education/skills lists from turning into claims
   const rawSentences: string[] = [];
+  let inEduSection = false;
+  let inSkillsSec = false;
+
   for (const line of lines) {
-    const sentences = line
-      .split(/(?<=[.!?•])\s+|\s*[•\n\r\t]+\s*/g)
-      .map(s => s.trim())
-      .filter(s => s.length > 20);
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Track sections to avoid converting degree or skills lines into claim sentences
+    if (/^(?:education|academic|academics|academic background|qualifications)\b/i.test(trimmed)) {
+      inEduSection = true;
+      inSkillsSec = false;
+      continue;
+    } else if (/^(?:skills|technical skills|core competencies|areas of expertise|tools & technologies)\b/i.test(trimmed)) {
+      inSkillsSec = true;
+      inEduSection = false;
+      continue;
+    } else if (/^(?:experience|work experience|employment history|projects|summary|profile|about me)\b/i.test(trimmed)) {
+      inEduSection = false;
+      inSkillsSec = false;
+    }
+
+    if (inEduSection || inSkillsSec) continue;
+
+    const sentences = splitSentenceSafe(line);
     rawSentences.push(...sentences);
   }
 
@@ -339,6 +407,21 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
 
     // Filter out standalone headers, titles, or section labels
     if (/^(?:professional summary|summary|about me|work experience|employment history|education|skills|certifications|key skills|contact|projects|internships|project works|personal details|declaration|academic profile|strengths|hobbies)$/i.test(sanitized.replace(/[.:;]$/, ''))) {
+      continue;
+    }
+
+    // Filter out academic degrees and education lines
+    if (/\b(?:bachelor|master|phd|b\.s|m\.s|b\.e|b\.tech|m\.tech|mba|bba|bca|mca|b\.com|m\.com|b\.sc|m\.sc|diploma|degree|university|institute|college|graduated)\b/i.test(sanitized)) {
+      continue;
+    }
+
+    // Filter out comma-delimited skill lists (e.g. "React, Node.js, .NET, C++, Python")
+    if (/^[a-zA-Z0-9#+.\s\/-]+(?:,\s*[a-zA-Z0-9#+.\s\/-]+){3,}\.?$/.test(sanitized)) {
+      continue;
+    }
+
+    // Filter out job header lines with separators (e.g. "Senior Full-Stack Developer - TechCorp Inc.")
+    if (titleKeywordsRegex.test(sanitized) && /\s+[-–—|•:]\s+/.test(sanitized) && sanitized.length < 90) {
       continue;
     }
 
@@ -461,7 +544,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
   // 7. Extract Real Education & Institutions from resume lines
   const educationList: CandidateProfile['education'] = [];
   for (const line of lines) {
-    const cleanLine = line.replace(/^[•\-\*\+\d\.\)\:\>\s|#]+/, '').trim();
+    const cleanLine = line.replace(/^[•\*\>~▪▸►\t]+\s*|^(?:\(?\d{1,2}[.)]\s+)/, '').trim();
     if (/^(?:provided|managed|taught|mentored|guided|conducted|coached|trained|supported|scheduled|facilitated|coordinated|partnered|sourced|screened|evaluated|reviewed|prepared|initiated|tracked|built|ensured)\b/i.test(cleanLine)) {
       continue;
     }
@@ -471,14 +554,26 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     ) {
       const sanitized = sanitizeClaimToEnglish(cleanLine).replace(/\.$/, '');
       if (sanitized.length > 6 && sanitized.length < 120) {
-        const parts = sanitized.split(/[-–|•,]/).map(p => p.trim()).filter(Boolean);
-        const degree = parts[0] || sanitized;
-        const institution = parts[1] || 'Educational Institution';
-        const yearMatch = sanitized.match(/\b(19\d\d|20\d\d)\b/);
+        // Extract graduation year (prioritize end year in date range)
+        const allYears = Array.from(sanitized.matchAll(/\b(19\d\d|20\d\d)\b/g)).map(m => m[1]);
+        const year = allYears.length > 0 ? allYears[allYears.length - 1] : '';
+
+        // Strip date range cleanly from degree/institution line to avoid breaking hyphens in dates
+        const degreeWithoutDates = sanitized
+          .replace(/\s*\((?:19|20)\d{2}\s*[-–—to]+\s*(?:(?:19|20)\d{2}|present|current)\)/gi, '')
+          .replace(/\s*\((?:19|20)\d{2}\)/g, '')
+          .replace(/\s+[-–—]\s*(?:19|20)\d{2}\s*[-–—to]+\s*(?:(?:19|20)\d{2}|present|current)/gi, '')
+          .replace(/\s+[-–—]\s*(?:19|20)\d{2}\b/g, '')
+          .trim();
+
+        const parts = degreeWithoutDates.split(/\s+[-–—|•]\s+|\s+from\s+|\s+at\s+|\s*,\s*/).map(p => p.trim()).filter(Boolean);
+        const degree = parts[0] || degreeWithoutDates;
+        const institution = (parts[1] || 'Educational Institution').replace(/[()]/g, '').trim();
+
         educationList.push({
           degree,
           institution,
-          year: yearMatch ? yearMatch[1] : ''
+          year
         });
         if (educationList.length >= 3) break;
       }
@@ -533,7 +628,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
       const duration = dateMatch ? (dateMatch[1] || dateMatch[2]) : '';
       const lineWithoutDates = dateMatch ? line.replace(dateMatch[0], '').trim() : line;
 
-      const parts = lineWithoutDates.split(/[-–—|•:]/).map(p => p.trim()).filter(Boolean);
+      const parts = lineWithoutDates.split(/\s+[-–—]\s+|\s*[|•:]\s*/).map(p => p.trim()).filter(Boolean);
       if (parts.length >= 2 || (parts.length === 1 && duration)) {
         const role = sanitizeClaimToEnglish(parts[0]).replace(/\.$/, '');
         const title = parts[1] ? sanitizeClaimToEnglish(parts[1]).replace(/\.$/, '') : role;
