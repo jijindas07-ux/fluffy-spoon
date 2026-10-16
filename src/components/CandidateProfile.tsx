@@ -120,7 +120,11 @@ export const CandidateProfileView: React.FC<CandidateProfileProps> = ({ profile,
                 {profile.title}
               </p>
               <div style={{ display: 'flex', gap: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
-                {profile.experienceYears > 0 && <span>🎯 {profile.experienceYears}+ Years Exp</span>}
+                <span>
+                  🎯 {profile.experienceYears > 0 
+                    ? (profile.experienceYears === 1 ? '1 Year Exp' : `${profile.experienceYears}+ Years Exp`) 
+                    : 'Fresh Graduate / Entry Level (0y Exp)'}
+                </span>
                 {profile.location && <span>📍 {profile.location}</span>}
                 {rawText.length > 0 && <span>📝 {rawText.length} Characters Scanned</span>}
               </div>

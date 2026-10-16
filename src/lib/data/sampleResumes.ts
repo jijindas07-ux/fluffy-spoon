@@ -270,6 +270,62 @@ const RAW_SAMPLE_CANDIDATES: CandidateProfile[] = [
         verificationStatus: 'Pending'
       }
     ]
+  },
+  {
+    id: 'cand-ananya-sharma',
+    name: 'Ananya Sharma',
+    title: 'Junior Software Engineer (Fresh Graduate)',
+    email: 'ananya.sharma.dev@example.com',
+    experienceYears: 0,
+    location: 'Bangalore, India',
+    summary: 'Recent Computer Science graduate specializing in Python, algorithms, React, and REST APIs. Demonstrated academic excellence with capstone project in automated text summarization and a 3-month summer engineering internship.',
+    skills: {
+      languages: ['Python', 'Java', 'JavaScript', 'SQL', 'C++'],
+      frameworks: ['React', 'FastAPI', 'Node.js'],
+      databases: ['PostgreSQL', 'MongoDB'],
+      toolsAndInfra: ['Git', 'Docker', 'Linux', 'VS Code']
+    },
+    projects: [
+      {
+        id: 'proj-grad-1',
+        title: 'TechCorp Solutions',
+        role: 'Summer Engineering Intern',
+        duration: 'Jun 2024 - Aug 2024',
+        technologies: ['Python', 'FastAPI', 'PostgreSQL'],
+        description: 'Developed automated REST health-check microservice during 10-week summer internship.',
+        highlights: [
+          'Engineered async telemetry endpoints monitoring uptime across 14 staging services with <15ms response latency.',
+          'Wrote PyTest unit suites increasing API code coverage from 68% to 89%.'
+        ]
+      }
+    ],
+    education: [
+      {
+        degree: 'B.Tech in Computer Science and Engineering',
+        institution: 'National Institute of Technology (NIT)',
+        year: '2020 - 2024'
+      }
+    ],
+    claims: [
+      {
+        id: 'claim-grad-1',
+        rawClaim: 'Engineered async telemetry endpoints monitoring uptime across 14 staging services with <15ms response latency.',
+        category: 'Key Achievement & Outcomes',
+        contextProject: 'TechCorp Solutions',
+        claimedMetrics: '<15ms response latency, 14 staging services',
+        confidenceLevel: 'High',
+        verificationStatus: 'Pending'
+      },
+      {
+        id: 'claim-grad-2',
+        rawClaim: 'Wrote PyTest unit suites increasing API code coverage from 68% to 89%.',
+        category: 'Operational Execution & Quality',
+        contextProject: 'TechCorp Solutions',
+        claimedMetrics: '68% to 89% test coverage',
+        confidenceLevel: 'High',
+        verificationStatus: 'Pending'
+      }
+    ]
   }
 ];
 

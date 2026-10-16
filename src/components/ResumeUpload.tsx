@@ -411,8 +411,8 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onProfileParsed }) =
                       <div style={{ fontWeight: 700, color: '#ffffff', fontSize: '1.02rem' }}>
                         {candidate.name}
                       </div>
-                      <span className="badge badge-cyan" style={{ fontSize: '0.7rem' }}>
-                        {candidate.experienceYears}y exp
+                      <span className={candidate.experienceYears > 0 ? "badge badge-cyan" : "badge badge-emerald"} style={{ fontSize: '0.7rem' }}>
+                        {candidate.experienceYears > 0 ? `${candidate.experienceYears}y exp` : 'Fresh Grad'}
                       </span>
                     </div>
                     <div style={{ fontSize: '0.82rem', color: 'var(--accent-purple)', fontWeight: 600, marginBottom: '0.65rem' }}>

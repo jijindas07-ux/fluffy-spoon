@@ -3,6 +3,7 @@ import { DynamicQuestionResult } from '../engine/adaptiveEngine';
 import { sanitizeClaimToEnglish } from '../engine/claimExtractor';
 import { cleanPdfText } from '../engine/pdfParser';
 import { ResumeKeywordExtractor } from '../engine/keywordExtractor';
+import { ExperienceCalculator } from '../engine/experienceCalculator';
 
 export interface LLMConfig {
   provider: 'gemini' | 'openai' | 'groq' | 'custom' | 'auto';
@@ -69,12 +70,19 @@ ${cleanedText && cleanedText.length > 20 ? `RESUME TEXT:
 ${cleanedText.slice(0, 7500)}` : ''}
 
 ANALYSIS GOALS (ALL IN PLAIN, FLUENT ENGLISH):
-1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name, actual current/latest Job Title, and calculate total years of professional experience from the dates on the resume. NEVER assume the candidate works in IT or software unless clearly stated on the resume.
-2. **Key Roles & Companies**: Identify the candidate's key employment roles, company or institution names, and employment dates.
-3. **Verifiable Claims (CRITICAL: CLEAN ENGLISH ONLY, KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE ENGLISH SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Managed a $4.2M departmental budget with zero negative variances."). NEVER dump PDF tags, font bytecode, or multiple sentences into a single claim!
-4. **Metrics & Impact**: Capture the exact metrics, percentages, revenue figures, numbers, volumes, or business outcomes mentioned.
-5. **Categorization**: Categorize each claim naturally using universal categories: "Key Achievement & Outcomes", "Leadership & Team Direction", "Operational Execution & Quality", "Strategic Initiatives & Planning", "Tools, Platforms & Methodologies", "Impact & Results", or "Process & Operations".
-6. **Skills & Tools**: Extract all relevant professional skills, methodologies, enterprise platforms (ERP, CRM, ATS, EHR, LMS, etc.), and tools explicitly mentioned on the resume.
+1. **Candidate Identity & Role**: Extract the candidate's authentic Full Name and actual current/latest Job Title. NEVER assume the candidate works in IT or software unless clearly stated on the resume.
+2. **Professional Experience Calculation (STRICT RULES)**:
+   - Calculate total years of professional experience using EMPLOYMENT HISTORY AND JOB DATES ONLY.
+   - NEVER include school, college, university, degree dates, or education duration as work experience. For example, a 4-year degree (2020-2024) is EDUCATION, NOT 4 years of work experience.
+   - For fresh graduates, students, or candidates with no prior employment history, experienceYears MUST be 0.
+   - For candidates with only internships, count only actual internship months (if under 1 year, experienceYears must be 0).
+   - Avoid double-counting overlapping jobs (e.g., concurrent roles count once).
+   - Do NOT invent or guess experience years when dates are missing (default to 0).
+3. **Key Roles & Companies**: Identify the candidate's key employment roles, company names, and employment dates.
+4. **Verifiable Claims (CRITICAL: CLEAN ENGLISH ONLY, KEEP SHORT & CRISP)**: Extract 4 to 8 distinct, punchy claims directly from the resume. Each claim MUST be a SINGLE, CONCISE ENGLISH SENTENCE (maximum 15 to 22 words) focused on ONE specific achievement, action, or metric (e.g. "Built a database of 800+ candidate profiles through LinkedIn sourcing." or "Managed a $4.2M departmental budget with zero negative variances."). NEVER dump PDF tags, font bytecode, or multiple sentences into a single claim!
+5. **Metrics & Impact**: Capture the exact metrics, percentages, revenue figures, numbers, volumes, or business outcomes mentioned.
+6. **Categorization**: Categorize each claim naturally using universal categories: "Key Achievement & Outcomes", "Leadership & Team Direction", "Operational Execution & Quality", "Strategic Initiatives & Planning", "Tools, Platforms & Methodologies", "Impact & Results", or "Process & Operations".
+7. **Skills & Tools**: Extract all relevant professional skills, methodologies, enterprise platforms (ERP, CRM, ATS, EHR, LMS, etc.), and tools explicitly mentioned on the resume.
 
 Respond ONLY with a valid JSON object matching this schema:
 {
@@ -144,11 +152,23 @@ Respond ONLY with a valid JSON object matching this schema:
         if (sanitizedClaims.length > 0) {
           const uniqueCandId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
           const extractedKeywords = ResumeKeywordExtractor.extract(rawText, parsed.name || fallbackName);
+
+          const rawExp = Number(parsed.experienceYears);
+          const calculatedExp = ExperienceCalculator.calculate({
+            workHistory: parsed.projects,
+            rawText: cleanedText
+          });
+          // Strictly guard against hallucinated education years:
+          // If no employment history or fresh graduate, experience is strictly 0.
+          const finalExperienceYears = calculatedExp > 0
+            ? calculatedExp
+            : (!parsed.projects || parsed.projects.length === 0 ? 0 : (rawExp > 0 && rawExp <= 2 ? rawExp : 0));
+
           return {
             id: uniqueCandId,
             name: parsed.name && parsed.name !== 'Candidate' ? parsed.name : fallbackName,
             title: parsed.title || 'Professional Candidate',
-            experienceYears: Number(parsed.experienceYears) || 0,
+            experienceYears: finalExperienceYears,
             summary: parsed.summary || 'Demonstrated professional experience documented on resume.',
             skills: {
               languages: parsed.skills?.languages || [],
@@ -399,7 +419,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
           executiveSummary: parsed.executiveSummary,
           marketValuation: parsed.marketValuation || {
             percentileTier,
-            experienceBandMatch: `${config.seniority} Band (${candidate.experienceYears > 0 ? candidate.experienceYears + '+ Years Exp' : 'Targeted Role Fit'})`,
+            experienceBandMatch: `${config.seniority} Band (${candidate.experienceYears > 0 ? (candidate.experienceYears === 1 ? '1 Year Exp' : candidate.experienceYears + '+ Years Exp') : 'Entry Level / Fresh Graduate'})`,
             estimatedRampUp,
             leadershipAptitude: overallScore >= 80 ? 'High Professional Ownership' : 'Independent Contributor',
             keyHiringDrivers: [

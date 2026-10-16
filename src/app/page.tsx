@@ -13,6 +13,7 @@ import { EvaluationReportView } from '@/components/EvaluationReport';
 import { CandidateProfile, EvaluationReport, InterviewConfig, InterviewSession } from '@/lib/types';
 import { StoredAISettings } from '@/components/AISettingsModal';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { SAMPLE_REPORT } from '@/lib/data/sampleReport';
 
 type AppStep = 'landing' | 'upload' | 'profile' | 'setup' | 'interview' | 'report';
 
@@ -28,6 +29,15 @@ function HomeInner() {
   const [evaluationReport, setEvaluationReport] = useState<EvaluationReport | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasRestoredSession, setHasRestoredSession] = useState(false);
+
+  // Check for demo report in search params
+  useEffect(() => {
+    const demoParam = searchParams.get('demo') || searchParams.get('step');
+    if (demoParam === 'report') {
+      setEvaluationReport(SAMPLE_REPORT);
+      setCurrentStep('report');
+    }
+  }, [searchParams]);
 
   // Attempt to restore in-progress session from localStorage after mount
   useEffect(() => {

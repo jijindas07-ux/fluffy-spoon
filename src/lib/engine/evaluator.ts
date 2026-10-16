@@ -405,7 +405,7 @@ export class InterviewEvaluator {
 
     const marketValuation = {
       percentileTier,
-      experienceBandMatch: `${config.seniority} Band (${candidate.experienceYears > 0 ? candidate.experienceYears + '+ Years Exp' : 'Targeted Role Fit'})`,
+      experienceBandMatch: `${config.seniority} Band (${candidate.experienceYears > 0 ? (candidate.experienceYears === 1 ? '1 Year Exp' : candidate.experienceYears + '+ Years Exp') : 'Entry Level / Fresh Graduate'})`,
       estimatedRampUp,
       leadershipAptitude,
       keyHiringDrivers

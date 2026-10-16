@@ -12,6 +12,7 @@ import { memoryStore } from '@/lib/db/client';
 import { LLMService, LLMConfig } from '@/lib/services/llmService';
 import { validateToken, extractTokenFromRequest } from '@/lib/auth/authUtils';
 import { TelemetryService } from '@/lib/engine/telemetry';
+import { ExperienceCalculator } from '@/lib/engine/experienceCalculator';
 
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -126,6 +127,12 @@ export async function POST(req: NextRequest) {
         profile = extractClaimsFromText(rawText || `Resume document for ${candidateName}`, candidateName);
         profile.parserSource = isDocx ? 'docx_parser' : 'direct_pdf_parser';
       }
+
+      // Ensure experienceYears strictly reflects employment history and job dates only (never education)
+      profile.experienceYears = ExperienceCalculator.calculate({
+        workHistory: profile.projects,
+        rawText
+      });
 
       // Attach raw scanned text and verbatim key points
       profile.rawExtractedText = rawText;

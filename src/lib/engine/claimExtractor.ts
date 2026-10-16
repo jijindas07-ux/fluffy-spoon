@@ -1,6 +1,7 @@
 import type { CandidateProfile, ResumeClaim } from '../types';
 import { cleanPdfText, isReadableEnglishText, stripPdfSyntax } from './pdfParser';
 import { ResumeKeywordExtractor } from './keywordExtractor';
+import { ExperienceCalculator } from './experienceCalculator';
 
 /**
  * Sanitize individual claim text to make sure it's presented in 100% clean, proper English.
@@ -313,17 +314,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     }
   }
 
-  // 4. Calculate Experience Years from real dates found in resume
-  let calculatedYears = 0;
-  const yearMatches = Array.from(rawText.matchAll(/\b(19\d\d|20\d\d)\b/g)).map(m => parseInt(m[1], 10));
-  const validYears = yearMatches.filter(y => y >= 1990 && y <= new Date().getFullYear());
-  if (validYears.length >= 2) {
-    const minYear = Math.min(...validYears);
-    const maxYear = Math.max(...validYears);
-    calculatedYears = Math.min(30, Math.max(1, maxYear - minYear));
-  } else if (validYears.length === 1) {
-    calculatedYears = Math.max(1, new Date().getFullYear() - validYears[0]);
-  }
+  // 4. (Experience calculation is performed deterministically via ExperienceCalculator using work history)
 
   // 5. Extract Real Claims: Split by sentence boundaries (. , \n, •) so claims are short and concise
   const extractedClaims: ResumeClaim[] = [];
@@ -497,28 +488,55 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
   // 8. Extract Real Work Experience Roles across all industries
   const projectsList: CandidateProfile['projects'] = [];
   let projIdx = 1;
+  let currentSection = 'none';
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const cleanHeader = line.replace(/^[#*•\-_:\s]+/, '').replace(/[:\s]+$/, '');
+
+    // Section header tracking
+    if (cleanHeader.length <= 40) {
+      if (/^(?:work\s+experience|professional\s+experience|employment\s+history|work\s+history|career\s+history|experience|employment)\b/i.test(cleanHeader)) {
+        currentSection = 'experience';
+        continue;
+      } else if (/^(?:education|academic\s+background|academic\s+qualifications|academics|academic\s+profile|degrees|university|college|schooling)\b/i.test(cleanHeader)) {
+        currentSection = 'education';
+        continue;
+      } else if (/^(?:projects|academic\s+projects|personal\s+projects|certifications|certificates|licenses|skills|technical\s+skills|core\s+competencies|summary|about\s+me)\b/i.test(cleanHeader)) {
+        currentSection = 'other';
+        continue;
+      }
+    }
+
+    if (currentSection === 'education' || currentSection === 'other') {
+      continue;
+    }
+
+    const isEducationLine = /\b(?:bachelor|master|phd|b\.s|m\.s|b\.e|b\.tech|m\.tech|mba|bba|bca|mca|b\.com|m\.com|b\.sc|m\.sc|bsn|msn|rn|jd|llb|llm|diploma|degree|university|institute|college|graduated|graduation|school|secondary|cgpa|gpa|sslc|hsc|cbse|icse)\b/i.test(line);
+
     const hasRoleKeyword = titleKeywordsRegex.test(line);
     const hasSeparator = /[-–—|•:]/.test(line);
     const hasDate = /\b(19\d\d|20\d\d|present)\b/i.test(line);
 
-    // Detect company or role line across any profession
+    // Detect company or role line across any profession (strictly exclude education/degrees)
     if (
-      (hasRoleKeyword || hasDate) &&
+      !isEducationLine &&
+      (hasRoleKeyword || hasDate || currentSection === 'experience') &&
       hasSeparator &&
       line.length < 130 &&
       !line.startsWith('•') &&
       !line.startsWith('-') &&
       !/^(?:professional summary|summary|education|skills|certifications|key skills)\b/i.test(line)
     ) {
-      const parts = line.split(/[-–—|•:]/).map(p => p.trim()).filter(Boolean);
-      if (parts.length >= 2) {
+      // First extract date range safely so splitting by hyphen does not break date ranges like (2021 - 2024)
+      const dateMatch = line.match(/\(([^)]+)\)|\b((?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+)?\d{4}\s*(?:–|—|-|\bto\b|\btill\b)\s*(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4}|present|current|now|ongoing|\d{4}))\b/i);
+      const duration = dateMatch ? (dateMatch[1] || dateMatch[2]) : '';
+      const lineWithoutDates = dateMatch ? line.replace(dateMatch[0], '').trim() : line;
+
+      const parts = lineWithoutDates.split(/[-–—|•:]/).map(p => p.trim()).filter(Boolean);
+      if (parts.length >= 2 || (parts.length === 1 && duration)) {
         const role = sanitizeClaimToEnglish(parts[0]).replace(/\.$/, '');
-        const titleWithDates = parts.slice(1).join(' ');
-        const dateMatch = titleWithDates.match(/\(([^)]+)\)|\b(19\d\d|20\d\d(?:\s*-\s*(?:Present|19\d\d|20\d\d))?)\b/i);
-        const duration = dateMatch ? (dateMatch[1] || dateMatch[0]) : '';
-        const title = titleWithDates.replace(/\([^)]+\)/g, '').trim();
+        const title = parts[1] ? sanitizeClaimToEnglish(parts[1]).replace(/\.$/, '') : role;
 
         // Collect following bullet points for this role
         const highlights: string[] = [];
@@ -546,6 +564,12 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     }
   }
 
+  // Calculate authoritative experience strictly from employment history and job dates (ignoring education)
+  const calculatedYears = ExperienceCalculator.calculate({
+    workHistory: projectsList,
+    rawText
+  });
+
   const uniqueCandId = `cand-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const extractedKeywords = ResumeKeywordExtractor.extract(rawText, detectedName);
 
@@ -553,7 +577,7 @@ export function extractClaimsFromText(rawText: string, candidateName: string = '
     id: uniqueCandId,
     name: detectedName,
     title: detectedTitle,
-    experienceYears: calculatedYears || 0,
+    experienceYears: calculatedYears,
     summary: realSummary,
     skills: {
       languages: Array.from(languages),
